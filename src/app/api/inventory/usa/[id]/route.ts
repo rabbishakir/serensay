@@ -7,10 +7,26 @@ const UsaInventoryUpdateSchema = z.object({
   productName: z.string().min(1).optional(),
   brand: z.string().optional(),
   shade: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   qty: z.number().int().optional(),
   buyPriceUsd: z.number().optional(),
   weightG: z.number().optional(),
 })
+
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  try {
+    const item = await prisma.usaInventory.findUnique({
+      where: { id: params.id },
+    })
+    if (!item) {
+      return NextResponse.json({ error: "USA inventory item not found." }, { status: 404 })
+    }
+    return NextResponse.json(item)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch USA inventory item."
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   let parsed: z.infer<typeof UsaInventoryUpdateSchema>

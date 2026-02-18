@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Sheet,
@@ -23,6 +24,7 @@ export type BdInventoryItem = {
   productName: string
   brand: string | null
   shade: string | null
+  tags: string[]
   qty: number
   buyPriceBdt: number | null
   sellPriceBdt: number | null
@@ -34,6 +36,7 @@ export type UsaInventoryItem = {
   productName: string
   brand: string | null
   shade: string | null
+  tags: string[]
   qty: number
   buyPriceUsd: number | null
   weightG: number | null
@@ -116,6 +119,8 @@ export default function InventoryDrawer({
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<FormState>(() => toFormState(type, item))
   const [productSuggestions, setProductSuggestions] = useState<string[]>([])
+  const [availableTags, setAvailableTags] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [productFocused, setProductFocused] = useState(false)
   const [showProductError, setShowProductError] = useState(false)
 
@@ -129,8 +134,31 @@ export default function InventoryDrawer({
   useEffect(() => {
     if (!drawerOpen) return
     setForm(toFormState(type, item))
+    setSelectedTags(item?.tags ?? [])
     setShowProductError(false)
   }, [drawerOpen, type, item])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+    let cancelled = false
+
+    const run = async () => {
+      try {
+        const res = await fetch("/api/settings/tags", { cache: "no-store" })
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as { tags?: string[] }
+        if (cancelled) return
+        setAvailableTags(Array.isArray(data?.tags) ? data.tags : [])
+      } catch {
+        if (!cancelled) setAvailableTags([])
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [drawerOpen])
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -185,6 +213,7 @@ export default function InventoryDrawer({
               brand: form.brand.trim() || undefined,
               shade: form.shade.trim() || undefined,
               qty: Number(form.qty || 0),
+              tags: selectedTags,
               buyPriceBdt: form.buyPriceBdt.trim() ? Number(form.buyPriceBdt) : undefined,
               sellPriceBdt: form.sellPriceBdt.trim() ? Number(form.sellPriceBdt) : undefined,
             }
@@ -193,6 +222,7 @@ export default function InventoryDrawer({
               brand: form.brand.trim() || undefined,
               shade: form.shade.trim() || undefined,
               qty: Number(form.qty || 0),
+              tags: selectedTags,
               buyPriceUsd: form.buyPriceUsd.trim() ? Number(form.buyPriceUsd) : undefined,
               weightG: form.weightG.trim() ? Number(form.weightG) : undefined,
             }
@@ -277,6 +307,40 @@ export default function InventoryDrawer({
           placeholder="Qty"
           onChange={(e) => setForm((prev) => ({ ...prev, qty: e.target.value }))}
         />
+
+        <div className="space-y-2">
+          <p className="text-sm text-slate-600">Tags</p>
+          {availableTags.length === 0 ? (
+            <p className="text-xs text-slate-500">No tags configured. Add tags in Settings.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map((tag) => {
+                const selected = selectedTags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() =>
+                      setSelectedTags((prev) =>
+                        prev.includes(tag) ? prev.filter((value) => value !== tag) : [...prev, tag]
+                      )
+                    }
+                  >
+                    <Badge
+                      variant={selected ? "default" : "outline"}
+                      className={cn(
+                        "cursor-pointer",
+                        selected ? "bg-blue-600 text-white hover:bg-blue-600/90" : ""
+                      )}
+                    >
+                      {tag}
+                    </Badge>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {type === "bd" ? (
           <div className="grid grid-cols-2 gap-3">

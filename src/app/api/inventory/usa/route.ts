@@ -7,6 +7,7 @@ const UsaInventorySchema = z.object({
   productName: z.string().min(1, "Product name is required."),
   brand: z.string().optional(),
   shade: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   qty: z.number().int().optional(),
   buyPriceUsd: z.number().optional(),
   weightG: z.number().optional(),
@@ -36,7 +37,10 @@ export async function POST(req: Request) {
 
   try {
     const created = await prisma.usaInventory.create({
-      data: parsed,
+      data: {
+        ...parsed,
+        tags: parsed.tags ?? [],
+      },
     })
     return NextResponse.json(created, { status: 201 })
   } catch (error) {

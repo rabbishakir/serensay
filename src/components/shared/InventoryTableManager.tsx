@@ -10,7 +10,16 @@ import InventoryDrawer, {
   type InventoryType,
   type UsaInventoryItem,
 } from "@/components/shared/InventoryDrawer"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -52,8 +61,26 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
   const [qtyEditingId, setQtyEditingId] = useState<string | null>(null)
   const [qtyDraft, setQtyDraft] = useState("")
+  const [moveDialogItem, setMoveDialogItem] = useState<UsaInventoryItem | null>(null)
+  const [moveQty, setMoveQty] = useState("1")
+  const [movingToBd, setMovingToBd] = useState(false)
 
   const endpoint = `/api/inventory/${type}`
+
+  const refreshItems = async () => {
+    try {
+      const res = await fetch(endpoint, { cache: "no-store" })
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data?.error ?? "Failed to refresh inventory.")
+        return
+      }
+      const data = (await res.json()) as InventoryItem[]
+      setItems(data)
+    } catch {
+      toast.error("Failed to refresh inventory.")
+    }
+  }
 
   const saveQty = async (id: string, qtyRaw: string) => {
     const qty = Number(qtyRaw)
@@ -105,6 +132,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
             Product: item.productName,
             Brand: item.brand ?? "",
             Shade: item.shade ?? "",
+            Tags: item.tags.join(", "),
             Qty: item.qty,
             BuyPriceBDT: item.buyPriceBdt ?? "",
             SellPriceBDT: item.sellPriceBdt ?? "",
@@ -114,6 +142,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
             Product: item.productName,
             Brand: item.brand ?? "",
             Shade: item.shade ?? "",
+            Tags: item.tags.join(", "),
             Qty: item.qty,
             BuyPriceUSD: item.buyPriceUsd ?? "",
             WeightG: item.weightG ?? "",
@@ -130,6 +159,37 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
     () => [...items].sort((a, b) => a.productName.localeCompare(b.productName)),
     [items]
   )
+
+  const onMoveToBd = async () => {
+    if (!moveDialogItem) return
+    const qty = Number(moveQty)
+    if (!Number.isInteger(qty) || qty <= 0 || qty > moveDialogItem.qty) {
+      toast.error("Enter a valid qty.")
+      return
+    }
+
+    setMovingToBd(true)
+    try {
+      const res = await fetch(`/api/inventory/usa/${moveDialogItem.id}/move-to-bd`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qty }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data?.error ?? "Failed to move to BD inventory.")
+        return
+      }
+      toast.success(`Moved ${qty} units to BD inventory`)
+      setMoveDialogItem(null)
+      setMoveQty("1")
+      await refreshItems()
+    } catch {
+      toast.error("Failed to move to BD inventory.")
+    } finally {
+      setMovingToBd(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -153,6 +213,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
               <TableHead>Product</TableHead>
               <TableHead>Brand</TableHead>
               <TableHead>Shade</TableHead>
+              <TableHead>Tags</TableHead>
               <TableHead>Qty</TableHead>
               {type === "bd" ? (
                 <>
@@ -173,7 +234,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
             {sorted.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={type === "bd" ? 8 : 8}
+                  colSpan={10}
                   className="h-24 text-center text-slate-500"
                 >
                   No items found.
@@ -187,6 +248,15 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
                     <TableCell>{item.productName}</TableCell>
                     <TableCell>{item.brand || "-"}</TableCell>
                     <TableCell>{item.shade || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {item.tags.map((tag) => (
+                          <Badge key={`${item.id}-${tag}`} className="bg-blue-600 text-white">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {qtyEditingId === item.id ? (
                         <Input
@@ -241,6 +311,18 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
                     <TableCell>{formatDate(item.updatedAt)}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        {type === "usa" ? (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const usaItem = item as UsaInventoryItem
+                              setMoveDialogItem(usaItem)
+                              setMoveQty(String(usaItem.qty))
+                            }}
+                          >
+                            Move to BD
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="outline"
@@ -282,6 +364,46 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
           }}
         />
       ) : null}
+
+      <Dialog
+        open={!!moveDialogItem}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMoveDialogItem(null)
+            setMoveQty("1")
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move to BD Inventory</DialogTitle>
+            <DialogDescription>
+              How many units do you want to move to BD stock?
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="number"
+            min={1}
+            max={moveDialogItem?.qty ?? 1}
+            value={moveQty}
+            onChange={(e) => setMoveQty(e.target.value)}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setMoveDialogItem(null)
+                setMoveQty("1")
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => void onMoveToBd()} disabled={movingToBd}>
+              {movingToBd ? "Moving..." : "Move to BD"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
