@@ -63,10 +63,16 @@ type OrderDrawerProps = {
   order?: OrderData
   defaultBuyerId?: string
   defaultBuyerName?: string
+  defaultProductName?: string
+  defaultBrand?: string | null
+  defaultShade?: string | null
+  defaultSource?: SourceValue
+  defaultSellPrice?: number | null
   trigger?: ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onSaved?: (order: OrderData) => void
+  onSuccess?: () => void
 }
 
 type FormState = {
@@ -110,7 +116,12 @@ function toFormState(
   mode: "add" | "edit",
   order?: OrderData,
   defaultBuyerId?: string,
-  defaultBuyerName?: string
+  defaultBuyerName?: string,
+  defaultProductName?: string,
+  defaultBrand?: string | null,
+  defaultShade?: string | null,
+  defaultSource?: SourceValue,
+  defaultSellPrice?: number | null
 ): FormState {
   if (mode === "edit" && order) {
     return {
@@ -130,18 +141,19 @@ function toFormState(
     }
   }
 
+  const source = defaultSource ?? "PRE_ORDER"
   return {
     buyerId: defaultBuyerId ?? "",
     buyerNameInput: defaultBuyerName ?? "",
-    productName: "",
-    brand: "",
-    shade: "",
+    productName: defaultProductName ?? "",
+    brand: defaultBrand ?? "",
+    shade: defaultShade ?? "",
     qty: "1",
-    sellPriceBdt: "",
+    sellPriceBdt: defaultSellPrice == null ? "" : String(defaultSellPrice),
     buyPriceUsd: "",
     depositBdt: "0",
-    source: "PRE_ORDER",
-    status: "TO_BE_PURCHASED",
+    source,
+    status: SOURCE_DEFAULT_STATUS[source],
     batchId: "",
     notes: "",
   }
@@ -152,16 +164,32 @@ export default function OrderDrawer({
   order,
   defaultBuyerId,
   defaultBuyerName,
+  defaultProductName,
+  defaultBrand,
+  defaultShade,
+  defaultSource,
+  defaultSellPrice,
   trigger,
   open,
   onOpenChange,
   onSaved,
+  onSuccess,
 }: OrderDrawerProps) {
   const isControlled = open !== undefined
   const [internalOpen, setInternalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<FormState>(() =>
-    toFormState(mode, order, defaultBuyerId, defaultBuyerName)
+    toFormState(
+      mode,
+      order,
+      defaultBuyerId,
+      defaultBuyerName,
+      defaultProductName,
+      defaultBrand,
+      defaultShade,
+      defaultSource,
+      defaultSellPrice
+    )
   )
   const [buyerSuggestions, setBuyerSuggestions] = useState<BuyerSuggestion[]>([])
   const [productSuggestions, setProductSuggestions] = useState<string[]>([])
@@ -182,13 +210,36 @@ export default function OrderDrawer({
 
   useEffect(() => {
     if (!drawerOpen) return
-    setForm(toFormState(mode, order, defaultBuyerId, defaultBuyerName))
+    setForm(
+      toFormState(
+        mode,
+        order,
+        defaultBuyerId,
+        defaultBuyerName,
+        defaultProductName,
+        defaultBrand,
+        defaultShade,
+        defaultSource,
+        defaultSellPrice
+      )
+    )
     setShowBuyerError(false)
     setShowSellError(false)
     setBuyerSuggestions([])
     setProductSuggestions([])
     setBrandSuggestions([])
-  }, [drawerOpen, mode, order, defaultBuyerId, defaultBuyerName])
+  }, [
+    drawerOpen,
+    mode,
+    order,
+    defaultBuyerId,
+    defaultBuyerName,
+    defaultProductName,
+    defaultBrand,
+    defaultShade,
+    defaultSource,
+    defaultSellPrice,
+  ])
 
   useEffect(() => {
     if (!drawerOpen || buyerReadOnly) return
@@ -361,6 +412,7 @@ export default function OrderDrawer({
       toast.success("Order saved")
       setDrawerOpen(false)
       onSaved?.(data as OrderData)
+      onSuccess?.()
     } catch {
       toast.error("Failed to save order.")
     } finally {

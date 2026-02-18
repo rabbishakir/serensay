@@ -56,5 +56,53 @@ export async function GET(req: NextRequest) {
     status: order.status,
   }))
 
-  return NextResponse.json({ buyers, orders })
+  const bdInventory = await prisma.bdInventory.findMany({
+    where: hasQuery
+      ? {
+          qty: { gt: 0 },
+          OR: [
+            { productName: { contains: q, mode: "insensitive" } },
+            { brand: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {
+          qty: { gt: 0 },
+        },
+    select: {
+      id: true,
+      productName: true,
+      brand: true,
+      shade: true,
+      qty: true,
+      sellPriceBdt: true,
+    },
+    orderBy: { productName: "asc" },
+    ...(hasQuery ? { take: 5 } : {}),
+  })
+
+  const usaInventory = await prisma.usaInventory.findMany({
+    where: hasQuery
+      ? {
+          qty: { gt: 0 },
+          OR: [
+            { productName: { contains: q, mode: "insensitive" } },
+            { brand: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {
+          qty: { gt: 0 },
+        },
+    select: {
+      id: true,
+      productName: true,
+      brand: true,
+      shade: true,
+      qty: true,
+      buyPriceUsd: true,
+    },
+    orderBy: { productName: "asc" },
+    ...(hasQuery ? { take: 5 } : {}),
+  })
+
+  return NextResponse.json({ buyers, orders, bdInventory, usaInventory })
 }

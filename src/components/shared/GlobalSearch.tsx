@@ -5,6 +5,8 @@ import { Search } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
+import OrderDrawer from "@/components/shared/OrderDrawer"
+import { Button } from "@/components/ui/button"
 import {
   CommandDialog,
   CommandEmpty,
@@ -31,6 +33,26 @@ type SearchOrder = {
 type SearchResponse = {
   buyers: SearchBuyer[]
   orders: SearchOrder[]
+  bdInventory: SearchBdInventory[]
+  usaInventory: SearchUsaInventory[]
+}
+
+type SearchBdInventory = {
+  id: string
+  productName: string
+  brand: string | null
+  shade: string | null
+  qty: number
+  sellPriceBdt: number | null
+}
+
+type SearchUsaInventory = {
+  id: string
+  productName: string
+  brand: string | null
+  shade: string | null
+  qty: number
+  buyPriceUsd: number | null
 }
 
 const CACHE_TTL_MS = 60_000
@@ -46,11 +68,38 @@ export default function GlobalSearch() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const [cache, setCache] = useState<SearchResponse>({ buyers: [], orders: [] })
+  const [cache, setCache] = useState<SearchResponse>({
+    buyers: [],
+    orders: [],
+    bdInventory: [],
+    usaInventory: [],
+  })
   const [cacheAt, setCacheAt] = useState<number>(0)
   const [loading, setLoading] = useState(false)
+  const [orderDrawerOpen, setOrderDrawerOpen] = useState(false)
+  const [blankOrderDrawerOpen, setBlankOrderDrawerOpen] = useState(false)
+  const [prefilledProduct, setPrefilledProduct] = useState<{
+    productName: string
+    brand: string | null
+    shade: string | null
+    source: "BD_STOCK" | "USA_STOCK"
+    sellPriceBdt?: number | null
+    buyPriceUsd?: number | null
+  } | null>(null)
 
   const isCacheStale = !cacheAt || Date.now() - cacheAt > CACHE_TTL_MS
+
+  const formatBdt = (value: number | null | undefined) =>
+    value == null
+      ? "-"
+      : new Intl.NumberFormat("en-BD", {
+          style: "currency",
+          currency: "BDT",
+          maximumFractionDigits: 0,
+        }).format(value)
+
+  const formatUsd = (value: number | null | undefined) =>
+    value == null ? "-" : `$${value.toFixed(2)}`
 
   const hydrateCache = async () => {
     setLoading(true)
@@ -79,7 +128,13 @@ export default function GlobalSearch() {
 
   useEffect(() => {
     if (!open) return
-    if (cache.buyers.length === 0 || cache.orders.length === 0 || isCacheStale) {
+    if (
+      cache.buyers.length === 0 ||
+      cache.orders.length === 0 ||
+      cache.bdInventory.length === 0 ||
+      cache.usaInventory.length === 0 ||
+      isCacheStale
+    ) {
       void hydrateCache()
     }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -98,6 +153,8 @@ export default function GlobalSearch() {
       setCache((prev) => ({
         buyers: mergeById(prev.buyers, data.buyers),
         orders: mergeById(prev.orders, data.orders),
+        bdInventory: mergeById(prev.bdInventory, data.bdInventory),
+        usaInventory: mergeById(prev.usaInventory, data.usaInventory),
       }))
       setCacheAt(Date.now())
     }
@@ -126,6 +183,24 @@ export default function GlobalSearch() {
     [cache.orders]
   )
 
+  const bdInventoryFuse = useMemo(
+    () =>
+      new Fuse(cache.bdInventory, {
+        keys: ["productName", "brand", "shade"],
+        threshold: 0.35,
+      }),
+    [cache.bdInventory]
+  )
+
+  const usaInventoryFuse = useMemo(
+    () =>
+      new Fuse(cache.usaInventory, {
+        keys: ["productName", "brand", "shade"],
+        threshold: 0.35,
+      }),
+    [cache.usaInventory]
+  )
+
   const normalizedQuery = query.trim()
   const filteredBuyers = useMemo(() => {
     if (!normalizedQuery) return cache.buyers.slice(0, 10)
@@ -137,6 +212,22 @@ export default function GlobalSearch() {
     return orderFuse.search(normalizedQuery, { limit: 10 }).map((r) => r.item)
   }, [orderFuse, cache.orders, normalizedQuery])
 
+  const filteredBdInventory = useMemo(() => {
+    if (normalizedQuery.length < 2) return []
+    return bdInventoryFuse.search(normalizedQuery, { limit: 10 }).map((r) => r.item)
+  }, [bdInventoryFuse, normalizedQuery])
+
+  const filteredUsaInventory = useMemo(() => {
+    if (normalizedQuery.length < 2) return []
+    return usaInventoryFuse.search(normalizedQuery, { limit: 10 }).map((r) => r.item)
+  }, [usaInventoryFuse, normalizedQuery])
+
+  const hasAnyResults =
+    filteredBdInventory.length > 0 ||
+    filteredUsaInventory.length > 0 ||
+    filteredBuyers.length > 0 ||
+    filteredOrders.length > 0
+
   return (
     <>
       <button
@@ -146,7 +237,7 @@ export default function GlobalSearch() {
       >
         <Search className="h-3.5 w-3.5" />
         <span>Search</span>
-        <span className="ml-auto rounded border border-white/20 px-1.5 py-0.5 text-[10px]">⌘K</span>
+        <span className="ml-auto rounded border border-white/20 px-1.5 py-0.5 text-[10px]">Cmd+K</span>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
@@ -156,7 +247,144 @@ export default function GlobalSearch() {
           onValueChange={setQuery}
         />
         <CommandList>
-          <CommandEmpty>{loading ? "Loading..." : "No results found."}</CommandEmpty>
+          <CommandEmpty>
+            {loading ? (
+              "Loading..."
+            ) : normalizedQuery.length >= 2 && !hasAnyResults ? (
+              <div className="space-y-3">
+                <p>No results found for: {normalizedQuery}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setOpen(false)
+                    setPrefilledProduct(null)
+                    setBlankOrderDrawerOpen(true)
+                  }}
+                >
+                  + Create New Order
+                </Button>
+              </div>
+            ) : (
+              "No results found."
+            )}
+          </CommandEmpty>
+          {normalizedQuery.length >= 2 && filteredBdInventory.length > 0 ? (
+            <CommandGroup heading="BD Stock">
+              {filteredBdInventory.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  onSelect={() => {
+                    setOpen(false)
+                    router.push("/inventory/bd")
+                  }}
+                >
+                  <div className="flex w-full items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 truncate">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        {item.productName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.brand ?? "-"} {item.shade ? ` - ${item.shade}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <span
+                        className={`text-xs font-medium ${
+                          item.qty > 2 ? "text-emerald-600" : "text-amber-600"
+                        }`}
+                      >
+                        {item.qty} in stock
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatBdt(item.sellPriceBdt)}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 border-blue-300 text-blue-700 hover:bg-blue-50"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPrefilledProduct({
+                            productName: item.productName,
+                            brand: item.brand,
+                            shade: item.shade,
+                            source: "BD_STOCK",
+                            sellPriceBdt: item.sellPriceBdt,
+                          })
+                          setOpen(false)
+                          setOrderDrawerOpen(true)
+                        }}
+                      >
+                        + Add to Order
+                      </Button>
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
+          {normalizedQuery.length >= 2 && filteredUsaInventory.length > 0 ? (
+            <CommandGroup heading="USA Stock">
+              {filteredUsaInventory.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  onSelect={() => {
+                    setOpen(false)
+                    router.push("/inventory/usa")
+                  }}
+                >
+                  <div className="flex w-full items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 truncate">
+                        <span className="h-2 w-2 rounded-full bg-blue-500" />
+                        {item.productName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.brand ?? "-"} {item.shade ? ` - ${item.shade}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <span
+                        className={`text-xs font-medium ${
+                          item.qty > 2 ? "text-emerald-600" : "text-amber-600"
+                        }`}
+                      >
+                        {item.qty} in stock
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatUsd(item.buyPriceUsd)}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 border-blue-300 text-blue-700 hover:bg-blue-50"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPrefilledProduct({
+                            productName: item.productName,
+                            brand: item.brand,
+                            shade: item.shade,
+                            source: "USA_STOCK",
+                            buyPriceUsd: item.buyPriceUsd,
+                          })
+                          setOpen(false)
+                          setOrderDrawerOpen(true)
+                        }}
+                      >
+                        + Add to Order
+                      </Button>
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
           <CommandGroup heading="Buyers">
             {filteredBuyers.map((buyer) => (
               <CommandItem
@@ -198,6 +426,36 @@ export default function GlobalSearch() {
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+
+      {prefilledProduct ? (
+        <OrderDrawer
+          mode="add"
+          open={orderDrawerOpen}
+          onOpenChange={(next) => {
+            setOrderDrawerOpen(next)
+            if (!next) setPrefilledProduct(null)
+          }}
+          defaultProductName={prefilledProduct.productName}
+          defaultBrand={prefilledProduct.brand}
+          defaultShade={prefilledProduct.shade}
+          defaultSource={prefilledProduct.source}
+          defaultSellPrice={prefilledProduct.sellPriceBdt}
+          onSuccess={() => {
+            setOrderDrawerOpen(false)
+            setPrefilledProduct(null)
+          }}
+        />
+      ) : null}
+
+      <OrderDrawer
+        mode="add"
+        open={blankOrderDrawerOpen}
+        onOpenChange={setBlankOrderDrawerOpen}
+        onSuccess={() => {
+          setBlankOrderDrawerOpen(false)
+        }}
+      />
     </>
   )
 }
+
