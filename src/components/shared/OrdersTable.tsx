@@ -1,0 +1,265 @@
+"use client"
+
+import Link from "next/link"
+import { useEffect, useMemo, useState } from "react"
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table"
+import { toast } from "sonner"
+
+import OrderDrawer, { type OrderData } from "@/components/shared/OrderDrawer"
+import StatusBadge from "@/components/shared/StatusBadge"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { cn } from "@/lib/utils"
+
+type OrdersTableProps = {
+  orders: OrderData[]
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-BD", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
+}
+
+function formatBdt(value: number) {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function sourceBadgeClass(source: OrderData["source"]) {
+  switch (source) {
+    case "BD_STOCK":
+      return "bg-emerald-100 text-emerald-800 border-emerald-200"
+    case "USA_STOCK":
+      return "bg-sky-100 text-sky-800 border-sky-200"
+    default:
+      return "bg-amber-100 text-amber-800 border-amber-200"
+  }
+}
+
+function sourceLabel(source: OrderData["source"]) {
+  switch (source) {
+    case "BD_STOCK":
+      return "BD Stock"
+    case "USA_STOCK":
+      return "USA Stock"
+    default:
+      return "Pre-Order"
+  }
+}
+
+export default function OrdersTable({ orders }: OrdersTableProps) {
+  const [rows, setRows] = useState<OrderData[]>(orders)
+  const [editingOrder, setEditingOrder] = useState<OrderData | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRows(orders)
+  }, [orders])
+
+  const onSaved = (saved: OrderData) => {
+    setRows((prev) => {
+      const exists = prev.some((row) => row.id === saved.id)
+      if (!exists) return prev
+      return prev.map((row) => (row.id === saved.id ? { ...row, ...saved } : row))
+    })
+    setEditingOrder(null)
+  }
+
+  const onDelete = async (order: OrderData) => {
+    const confirmed = window.confirm("Delete this order?")
+    if (!confirmed) return
+
+    setDeletingId(order.id)
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data?.error ?? "Failed to delete order.")
+        return
+      }
+      setRows((prev) => prev.filter((row) => row.id !== order.id))
+      toast.success("Order deleted")
+    } catch {
+      toast.error("Failed to delete order.")
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const columns = useMemo<ColumnDef<OrderData>[]>(
+    () => [
+      {
+        id: "date",
+        header: "Date",
+        cell: ({ row }) => formatDate(row.original.createdAt),
+      },
+      {
+        id: "buyer",
+        header: "Buyer",
+        cell: ({ row }) => (
+          <Link
+            href={`/buyers/${row.original.buyerId}`}
+            className="font-medium hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {row.original.buyer?.name ?? "Unknown buyer"}
+          </Link>
+        ),
+      },
+      {
+        id: "productBrand",
+        header: "Product + Brand",
+        cell: ({ row }) => (
+          <div>
+            <p className="font-medium">{row.original.productName}</p>
+            {row.original.brand ? (
+              <p className="text-xs text-slate-500">{row.original.brand}</p>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: "source",
+        header: "Source",
+        cell: ({ row }) => (
+          <Badge className={sourceBadgeClass(row.original.source)}>
+            {sourceLabel(row.original.source)}
+          </Badge>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      },
+      {
+        id: "sellPrice",
+        header: "Sell Price (BDT)",
+        cell: ({ row }) => formatBdt(row.original.sellPriceBdt),
+      },
+      {
+        id: "deposit",
+        header: "Deposit (BDT)",
+        cell: ({ row }) => formatBdt(row.original.depositBdt),
+      },
+      {
+        id: "balanceDue",
+        header: "Balance Due",
+        cell: ({ row }) => {
+          const balance = row.original.sellPriceBdt - row.original.depositBdt
+          return (
+            <span className={cn(balance > 0 ? "text-amber-600 font-medium" : "text-slate-500")}>
+              {formatBdt(balance)}
+            </span>
+          )
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <Button size="sm" variant="outline" onClick={() => setEditingOrder(row.original)}>
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={deletingId === row.original.id}
+              onClick={() => void onDelete(row.original)}
+            >
+              {deletingId === row.original.id ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [deletingId]
+  )
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  })
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((group) => (
+            <TableRow key={group.id}>
+              {group.headers.map((header) => (
+                <TableHead key={header.id}>
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => {
+              const balance = row.original.sellPriceBdt - row.original.depositBdt
+              return (
+                <TableRow
+                  key={row.id}
+                  className={cn(
+                    "cursor-pointer",
+                    balance > 0 ? "border-l-2 border-l-amber-200" : ""
+                  )}
+                  onClick={() => setEditingOrder(row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              )
+            })
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
+                No orders found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+
+      {editingOrder ? (
+        <OrderDrawer
+          mode="edit"
+          order={editingOrder}
+          open={!!editingOrder}
+          onOpenChange={(next) => {
+            if (!next) setEditingOrder(null)
+          }}
+          onSaved={onSaved}
+        />
+      ) : null}
+    </div>
+  )
+}

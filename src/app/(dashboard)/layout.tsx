@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import type { ReactNode } from "react"
+import GlobalSearch from "@/components/shared/GlobalSearch"
 
 type NavItem = {
   label: string
@@ -54,6 +55,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               )
             })}
           </nav>
+          <GlobalSearch />
           <div className="p-4">
             <Link
               href="/orders?new=true"
