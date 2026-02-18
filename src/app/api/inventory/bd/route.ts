@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { prisma } from "@/lib/db"
@@ -13,9 +13,18 @@ const BdInventorySchema = z.object({
   sellPriceBdt: z.number().optional(),
 })
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const search = req.nextUrl.searchParams.get("search")?.trim()
   try {
     const items = await prisma.bdInventory.findMany({
+      where: search
+        ? {
+            OR: [
+              { productName: { contains: search, mode: "insensitive" } },
+              { brand: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : undefined,
       orderBy: { productName: "asc" },
     })
     return NextResponse.json(items)

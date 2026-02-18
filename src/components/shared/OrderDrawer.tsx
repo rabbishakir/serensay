@@ -38,6 +38,17 @@ type BuyerSuggestion = {
   name: string
 }
 
+type InventoryLookupItem = {
+  id: string
+  productName: string
+  qty: number
+}
+
+type StockIndicator = {
+  text: string
+  tone: "green" | "amber" | "red" | "muted"
+}
+
 export type OrderData = {
   id: string
   buyerId: string
@@ -199,6 +210,7 @@ export default function OrderDrawer({
   const [brandFieldFocused, setBrandFieldFocused] = useState(false)
   const [showBuyerError, setShowBuyerError] = useState(false)
   const [showSellError, setShowSellError] = useState(false)
+  const [stockIndicator, setStockIndicator] = useState<StockIndicator | null>(null)
 
   const drawerOpen = isControlled ? open : internalOpen
   const setDrawerOpen = (next: boolean) => {
@@ -228,6 +240,7 @@ export default function OrderDrawer({
     setBuyerSuggestions([])
     setProductSuggestions([])
     setBrandSuggestions([])
+    setStockIndicator(null)
   }, [
     drawerOpen,
     mode,
@@ -240,6 +253,69 @@ export default function OrderDrawer({
     defaultSource,
     defaultSellPrice,
   ])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+
+    const sourceLabel = form.source === "BD_STOCK" ? "BD" : "USA"
+    const term = form.productName.trim()
+    if (!term || form.source === "PRE_ORDER") {
+      setStockIndicator(null)
+      return
+    }
+
+    let cancelled = false
+    const run = async () => {
+      try {
+        const endpoint =
+          form.source === "BD_STOCK" ? "/api/inventory/bd" : "/api/inventory/usa"
+        const res = await fetch(
+          `${endpoint}?search=${encodeURIComponent(term)}`,
+          { cache: "no-store" }
+        )
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as InventoryLookupItem[]
+        if (cancelled) return
+
+        const match =
+          data.find((item) => item.productName.toLowerCase() === term.toLowerCase()) ?? null
+        if (!match) {
+          setStockIndicator({ text: "Not found in inventory", tone: "muted" })
+          return
+        }
+
+        if (match.qty === 0) {
+          setStockIndicator({
+            text: "✗ Out of stock - will be treated as pre-order",
+            tone: "red",
+          })
+          return
+        }
+
+        if (match.qty <= 2) {
+          setStockIndicator({
+            text: `⚠ Only ${match.qty} left in stock`,
+            tone: "amber",
+          })
+          return
+        }
+
+        setStockIndicator({
+          text: `✓ ${match.qty} in ${sourceLabel} stock`,
+          tone: "green",
+        })
+      } catch {
+        if (!cancelled) {
+          setStockIndicator({ text: "Not found in inventory", tone: "muted" })
+        }
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [drawerOpen, form.productName, form.source])
 
   useEffect(() => {
     if (!drawerOpen || buyerReadOnly) return
@@ -409,9 +485,24 @@ export default function OrderDrawer({
         return
       }
 
-      toast.success("Order saved")
+      const savedOrder =
+        mode === "add" && data && typeof data === "object" && "order" in data
+          ? ((data as { order: OrderData }).order as OrderData)
+          : (data as OrderData)
+
+      if (mode === "add" && data && typeof data === "object" && "warning" in data) {
+        const warning = (data as { warning: string | null }).warning
+        if (warning) {
+          toast.warning(warning)
+        } else {
+          toast.success("Order saved")
+        }
+      } else {
+        toast.success("Order saved")
+      }
+
       setDrawerOpen(false)
-      onSaved?.(data as OrderData)
+      onSaved?.(savedOrder)
       onSuccess?.()
     } catch {
       toast.error("Failed to save order.")
@@ -598,6 +689,23 @@ export default function OrderDrawer({
             }}
           />
         </div>
+
+        {stockIndicator ? (
+          <p
+            className={cn(
+              "text-xs",
+              stockIndicator.tone === "green"
+                ? "text-emerald-600"
+                : stockIndicator.tone === "amber"
+                  ? "text-amber-600"
+                  : stockIndicator.tone === "red"
+                    ? "text-red-600"
+                    : "text-slate-500"
+            )}
+          >
+            {stockIndicator.text}
+          </p>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3">
           <Input

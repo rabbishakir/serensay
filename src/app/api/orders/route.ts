@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { prisma } from "@/lib/db"
+import { deductFromInventory } from "@/lib/inventoryUtils"
 import { OrderSchema } from "@/lib/validations"
 
 const PAGE_SIZE = 50
@@ -92,19 +93,34 @@ export async function POST(req: NextRequest) {
   const status = parsed.status ?? autoStatusBySource[parsed.source]
 
   try {
-    const created = await prisma.order.create({
-      data: {
-        ...parsed,
-        status,
-      },
-      include: {
-        buyer: {
-          select: { name: true },
+    const result = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.create({
+        data: {
+          ...parsed,
+          status,
         },
-      },
+        include: {
+          buyer: {
+            select: { name: true },
+          },
+        },
+      })
+
+      const deduction = await deductFromInventory(tx, {
+        productName: order.productName,
+        brand: order.brand,
+        shade: order.shade,
+        qty: order.qty,
+        source: order.source,
+      })
+
+      return {
+        order,
+        warning: deduction.warning,
+      }
     })
 
-    return NextResponse.json(created, { status: 201 })
+    return NextResponse.json(result, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to create order."
     return NextResponse.json({ error: message }, { status: 500 })

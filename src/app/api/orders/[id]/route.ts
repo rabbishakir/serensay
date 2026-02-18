@@ -1,7 +1,9 @@
+import { OrderStatus } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { prisma } from "@/lib/db"
+import { restoreToInventory } from "@/lib/inventoryUtils"
 import { OrderSchema } from "@/lib/validations"
 
 type Params = {
@@ -9,6 +11,7 @@ type Params = {
 }
 
 const OrderUpdateSchema = OrderSchema.partial()
+class NotFoundError extends Error {}
 
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
@@ -52,30 +55,54 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   )
 
   try {
-    const existing = await prisma.order.findUnique({
-      where: { id: params.id },
-      select: { id: true },
-    })
-    if (!existing) {
-      return NextResponse.json({ error: "Order not found." }, { status: 404 })
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to check order."
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-
-  try {
-    const updated = await prisma.order.update({
-      where: { id: params.id },
-      data,
-      include: {
-        buyer: {
-          select: { id: true, name: true, phone: true },
+    const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.order.findUnique({
+        where: { id: params.id },
+        select: {
+          id: true,
+          status: true,
+          productName: true,
+          brand: true,
+          shade: true,
+          qty: true,
+          source: true,
         },
-      },
+      })
+      if (!existing) {
+        throw new NotFoundError("Order not found.")
+      }
+
+      const next = await tx.order.update({
+        where: { id: params.id },
+        data,
+        include: {
+          buyer: {
+            select: { id: true, name: true, phone: true },
+          },
+        },
+      })
+
+      if (
+        parsedBody.status === OrderStatus.RETURNED &&
+        existing.status !== OrderStatus.RETURNED
+      ) {
+        await restoreToInventory(tx, {
+          productName: existing.productName,
+          brand: existing.brand,
+          shade: existing.shade,
+          qty: existing.qty,
+          source: existing.source,
+        })
+      }
+
+      return next
     })
+
     return NextResponse.json(updated)
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
     const message = error instanceof Error ? error.message : "Failed to update order."
     return NextResponse.json({ error: message }, { status: 500 })
   }
@@ -83,24 +110,46 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
-    const existing = await prisma.order.findUnique({
-      where: { id: params.id },
-      select: { id: true },
-    })
-    if (!existing) {
-      return NextResponse.json({ error: "Order not found." }, { status: 404 })
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to check order."
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.order.findUnique({
+        where: { id: params.id },
+        select: {
+          id: true,
+          status: true,
+          productName: true,
+          brand: true,
+          shade: true,
+          qty: true,
+          source: true,
+        },
+      })
+      if (!existing) {
+        throw new NotFoundError("Order not found.")
+      }
 
-  try {
-    const deleted = await prisma.order.delete({
-      where: { id: params.id },
+      if (
+        existing.status !== OrderStatus.DELIVERED &&
+        existing.status !== OrderStatus.RETURNED
+      ) {
+        await restoreToInventory(tx, {
+          productName: existing.productName,
+          brand: existing.brand,
+          shade: existing.shade,
+          qty: existing.qty,
+          source: existing.source,
+        })
+      }
+
+      await tx.order.delete({
+        where: { id: params.id },
+      })
     })
-    return NextResponse.json(deleted)
+
+    return NextResponse.json({ deleted: true })
   } catch (error) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
     const message = error instanceof Error ? error.message : "Failed to delete order."
     return NextResponse.json({ error: message }, { status: 500 })
   }
