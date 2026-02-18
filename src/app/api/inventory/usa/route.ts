@@ -1,0 +1,46 @@
+import { NextResponse } from "next/server"
+import { z } from "zod"
+
+import { prisma } from "@/lib/db"
+
+const UsaInventorySchema = z.object({
+  productName: z.string().min(1, "Product name is required."),
+  brand: z.string().optional(),
+  shade: z.string().optional(),
+  qty: z.number().int().optional(),
+  buyPriceUsd: z.number().optional(),
+  weightG: z.number().optional(),
+})
+
+export async function GET() {
+  try {
+    const items = await prisma.usaInventory.findMany({
+      orderBy: { productName: "asc" },
+    })
+    return NextResponse.json(items)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch USA inventory."
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+export async function POST(req: Request) {
+  let parsed: z.infer<typeof UsaInventorySchema>
+  try {
+    const body = await req.json()
+    parsed = UsaInventorySchema.parse(body)
+  } catch (error) {
+    const message = error instanceof z.ZodError ? error.issues[0]?.message : "Invalid request body."
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
+
+  try {
+    const created = await prisma.usaInventory.create({
+      data: parsed,
+    })
+    return NextResponse.json(created, { status: 201 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create USA inventory item."
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
