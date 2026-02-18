@@ -30,11 +30,11 @@ type ShipmentCard = {
 function shipmentBadgeClass(status: ShipmentCard["status"]) {
   switch (status) {
     case "PACKING":
-      return "bg-amber-100 text-amber-800 border-amber-200"
+      return "bg-[#FEF3C7] text-[#92400E]"
     case "IN_TRANSIT":
-      return "bg-blue-100 text-blue-800 border-blue-200"
+      return "bg-[#DBEAFE] text-[#1E40AF]"
     case "ARRIVED":
-      return "bg-green-100 text-green-800 border-green-200"
+      return "bg-[#DCFCE7] text-[#166534]"
   }
 }
 
@@ -100,7 +100,7 @@ export default function ShipmentsListClient({ initialShipments }: { initialShipm
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Shipments</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Shipments</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>+ New Batch</Button>
@@ -153,7 +153,7 @@ export default function ShipmentsListClient({ initialShipments }: { initialShipm
                 <Badge className={shipmentBadgeClass(shipment.status)}>{shipment.status}</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm text-slate-600">
+            <CardContent className="space-y-2 text-sm text-[#5D4548]">
               <p>Departure: {formatDate(shipment.departureDate)}</p>
               <p>Orders: {shipment._count.orders}</p>
               <Button asChild size="sm" variant="outline">

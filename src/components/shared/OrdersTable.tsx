@@ -50,11 +50,11 @@ function formatBdt(value: number) {
 function sourceBadgeClass(source: OrderData["source"]) {
   switch (source) {
     case "BD_STOCK":
-      return "bg-emerald-100 text-emerald-800 border-emerald-200"
+      return "border border-[#E8C8CC] bg-[#FCEEF0] text-[#A86870]"
     case "USA_STOCK":
-      return "bg-sky-100 text-sky-800 border-sky-200"
+      return "border border-[#EDE0E2] bg-white text-[#5D4548]"
     default:
-      return "bg-amber-100 text-amber-800 border-amber-200"
+      return "border border-[#EDE0E2] bg-[#F9F5F6] text-[#5D4548]"
   }
 }
 
@@ -137,7 +137,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
           <div>
             <p className="font-medium">{row.original.productName}</p>
             {row.original.brand ? (
-              <p className="text-xs text-slate-500">{row.original.brand}</p>
+              <p className="text-xs text-[#8B6F74]">{row.original.brand}</p>
             ) : null}
           </div>
         ),
@@ -149,7 +149,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
           <span
             className={cn(
               "inline-block w-[60px]",
-              row.original.qty > 1 ? "font-semibold text-blue-600" : "text-slate-500"
+              row.original.qty > 1 ? "font-semibold text-[#C4878E]" : "text-[#8B6F74]"
             )}
           >
             {row.original.qty}
@@ -186,7 +186,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
         cell: ({ row }) => {
           const balance = row.original.sellPriceBdt - row.original.depositBdt
           return (
-            <span className={cn(balance > 0 ? "text-amber-600 font-medium" : "text-slate-500")}>
+            <span className={cn(balance > 0 ? "font-medium text-[#C4878E]" : "text-[#8B6F74]")}>
               {formatBdt(balance)}
             </span>
           )
@@ -204,7 +204,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
               <Button
                 size="sm"
                 variant="outline"
-                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                className="border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
                 onClick={() => setBuyingOrder(row.original)}
               >
                 Mark Bought
@@ -257,9 +257,9 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
                   className={cn(
                     "cursor-pointer",
                     row.original.status === "TO_BE_PURCHASED"
-                      ? "border-l-2 border-l-amber-400"
+                      ? "border-l-2 border-l-[#C4878E]"
                       : balance > 0
-                        ? "border-l-2 border-l-amber-200"
+                        ? "border-l-2 border-l-[#E8C8CC]"
                         : ""
                   )}
                   onClick={() => setEditingOrder(row.original)}
@@ -274,7 +274,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
+              <TableCell colSpan={columns.length} className="h-24 text-center text-[#8B6F74]">
                 No orders found.
               </TableCell>
             </TableRow>

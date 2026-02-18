@@ -175,7 +175,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Settings</h1>
 
       <Card>
         <CardHeader>
@@ -190,7 +190,7 @@ export default function SettingsPage() {
             onChange={(e) => setExchangeRate(e.target.value)}
             disabled={loading}
           />
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[#8B6F74]">
             Last updated: {formatDate(metaMap.exchange_rate?.updatedAt)}
           </p>
           <Button
@@ -215,7 +215,7 @@ export default function SettingsPage() {
             onChange={(e) => setDefaultMargin(e.target.value)}
             disabled={loading}
           />
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[#8B6F74]">
             Last updated: {formatDate(metaMap.default_margin?.updatedAt)}
           </p>
           <Button
@@ -247,7 +247,7 @@ export default function SettingsPage() {
               <TableBody>
                 {tierRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-16 text-center text-slate-500">
+                    <TableCell colSpan={4} className="h-16 text-center text-[#8B6F74]">
                       No tiers yet.
                     </TableCell>
                   </TableRow>
@@ -323,7 +323,7 @@ export default function SettingsPage() {
             </Button>
           </div>
 
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[#8B6F74]">
             Last updated: {formatDate(metaMap.shipping_tiers?.updatedAt)}
           </p>
         </CardContent>
@@ -379,7 +379,7 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>About</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm text-slate-600">
+        <CardContent className="space-y-1 text-sm text-[#8B6F74]">
           <p>App: Glam Orbit Lite</p>
           <p>Version: 1.0</p>
           <p>Stack: Next.js 14, TypeScript, Tailwind CSS, shadcn/ui, Prisma, Supabase</p>

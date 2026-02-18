@@ -272,12 +272,12 @@ export default function InventoryDrawer({
             }}
           />
           {productFocused && productSuggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow">
+            <div className="absolute z-20 mt-1 w-full rounded-md border border-[#EDE0E2] bg-white shadow">
               {productSuggestions.map((name) => (
                 <button
                   key={name}
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FCEEF0]"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setForm((prev) => ({ ...prev, productName: name }))
@@ -309,9 +309,9 @@ export default function InventoryDrawer({
         />
 
         <div className="space-y-2">
-          <p className="text-sm text-slate-600">Tags</p>
+          <p className="text-sm text-[#5D4548]">Tags</p>
           {availableTags.length === 0 ? (
-            <p className="text-xs text-slate-500">No tags configured. Add tags in Settings.</p>
+            <p className="text-xs text-[#8B6F74]">No tags configured. Add tags in Settings.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {availableTags.map((tag) => {
@@ -330,7 +330,7 @@ export default function InventoryDrawer({
                       variant={selected ? "default" : "outline"}
                       className={cn(
                         "cursor-pointer",
-                        selected ? "bg-blue-600 text-white hover:bg-blue-600/90" : ""
+                        selected ? "bg-[#C4878E] text-white hover:bg-[#A86870]" : ""
                       )}
                     >
                       {tag}

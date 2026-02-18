@@ -65,10 +65,10 @@ export default async function BuyerProfilePage({ params }: { params: { id: strin
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold tracking-tight">{buyer.name}</h1>
-          <p className="text-sm text-slate-600">{buyer.phone || "No phone added"}</p>
-          <p className="text-sm text-slate-600">{buyer.address || "No address added"}</p>
-          <p className="text-sm text-slate-600">{buyer.notes || "No notes yet"}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#1E1215]">{buyer.name}</h1>
+          <p className="text-sm text-[#8B6F74]">{buyer.phone || "No phone added"}</p>
+          <p className="text-sm text-[#8B6F74]">{buyer.address || "No address added"}</p>
+          <p className="text-sm text-[#8B6F74]">{buyer.notes || "No notes yet"}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -95,15 +95,15 @@ export default async function BuyerProfilePage({ params }: { params: { id: strin
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-slate-500">Total Orders</p>
+          <p className="text-sm text-[#8B6F74]">Total Orders</p>
           <p className="mt-1 text-2xl font-semibold">{totalOrders}</p>
         </div>
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-slate-500">Total Spend (BDT)</p>
+          <p className="text-sm text-[#8B6F74]">Total Spend (BDT)</p>
           <p className="mt-1 text-2xl font-semibold">{formatBdt(totalSpend)}</p>
         </div>
         <div className="rounded-lg border p-4">
-          <p className="text-sm text-slate-500">Outstanding Balance (BDT)</p>
+          <p className="text-sm text-[#8B6F74]">Outstanding Balance (BDT)</p>
           <p className={`mt-1 text-2xl font-semibold ${outstandingBalance > 0 ? "text-red-600" : ""}`}>
             {formatBdt(outstandingBalance)}
           </p>
@@ -111,7 +111,7 @@ export default async function BuyerProfilePage({ params }: { params: { id: strin
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Order History</h2>
+        <h2 className="text-xl font-semibold text-[#1E1215]">Order History</h2>
         <BuyerOrderHistory orders={buyer.orders} />
       </section>
     </div>

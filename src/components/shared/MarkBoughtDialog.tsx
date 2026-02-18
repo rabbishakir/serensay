@@ -119,8 +119,8 @@ export default function MarkBoughtDialog({
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1">
             <p className="text-sm font-medium">Units for this order</p>
-            <p className="text-sm text-slate-700">{order?.qty ?? 0}</p>
-            <p className="text-xs text-slate-500">locked to order quantity</p>
+            <p className="text-sm text-[#5D4548]">{order?.qty ?? 0}</p>
+            <p className="text-xs text-[#8B6F74]">locked to order quantity</p>
           </div>
 
           <div className="space-y-1">
@@ -132,7 +132,7 @@ export default function MarkBoughtDialog({
               placeholder="0"
               onChange={(e) => setExtraQty(e.target.value)}
             />
-            <p className="text-xs text-slate-500">Enter 0 if you only bought for this order</p>
+            <p className="text-xs text-[#8B6F74]">Enter 0 if you only bought for this order</p>
           </div>
 
           <div className="space-y-1">

@@ -21,7 +21,7 @@ export default async function UsaInventoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">USA Inventory</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">USA Inventory</h1>
       <InventoryTableManager type="usa" initialItems={items} />
     </div>
   )

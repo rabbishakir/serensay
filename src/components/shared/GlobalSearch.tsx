@@ -233,11 +233,11 @@ export default function GlobalSearch() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mx-4 mb-2 flex w-[calc(100%-2rem)] items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-left text-xs text-white/85 hover:bg-white/10"
+        className="mx-4 mb-2 flex w-[calc(100%-2rem)] items-center gap-2 rounded-md border border-[#E8C8CC] bg-white px-3 py-2 text-left text-xs text-[#5D4548] hover:bg-[#FCEEF0]"
       >
         <Search className="h-3.5 w-3.5" />
         <span>Search</span>
-        <span className="ml-auto rounded border border-white/20 px-1.5 py-0.5 text-[10px]">Cmd+K</span>
+        <span className="ml-auto rounded border border-[#E8C8CC] px-1.5 py-0.5 text-[10px] text-[#8B6F74]">Cmd+K</span>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
@@ -256,6 +256,7 @@ export default function GlobalSearch() {
                 <Button
                   type="button"
                   variant="outline"
+                  className="border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
                   onClick={() => {
                     setOpen(false)
                     setPrefilledProduct(null)
@@ -304,7 +305,7 @@ export default function GlobalSearch() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 border-blue-300 text-blue-700 hover:bg-blue-50"
+                        className="h-7 border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -340,7 +341,7 @@ export default function GlobalSearch() {
                   <div className="flex w-full items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 truncate">
-                        <span className="h-2 w-2 rounded-full bg-blue-500" />
+                        <span className="h-2 w-2 rounded-full bg-[#C4878E]" />
                         {item.productName}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
@@ -362,7 +363,7 @@ export default function GlobalSearch() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 border-blue-300 text-blue-700 hover:bg-blue-50"
+                        className="h-7 border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={(e) => {
                           e.stopPropagation()

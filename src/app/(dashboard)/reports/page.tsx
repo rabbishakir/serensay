@@ -184,7 +184,7 @@ export default function ReportsPage() {
           <Button variant="outline" size="icon" onClick={() => setMonth((m) => shiftMonth(m, -1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-semibold tracking-tight">{displayMonth(month)}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">{displayMonth(month)}</h1>
           <Button variant="outline" size="icon" onClick={() => setMonth((m) => shiftMonth(m, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -286,7 +286,7 @@ export default function ReportsPage() {
         <CardContent>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-slate-500">
+              <tr className="border-b text-left text-[#8B6F74]">
                 <th className="py-2">Rank</th>
                 <th className="py-2">Product</th>
                 <th className="py-2">Orders</th>

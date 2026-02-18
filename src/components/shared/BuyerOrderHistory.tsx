@@ -44,7 +44,7 @@ function formatBdt(value: number) {
 export default function BuyerOrderHistory({ orders }: BuyerOrderHistoryProps) {
   if (orders.length === 0) {
     return (
-      <p className="rounded-md border border-dashed px-4 py-10 text-center text-sm text-slate-500">
+      <p className="rounded-md border border-dashed px-4 py-10 text-center text-sm text-[#8B6F74]">
         No orders yet. Click + Add Order to create the first one.
       </p>
     )
@@ -58,15 +58,15 @@ export default function BuyerOrderHistory({ orders }: BuyerOrderHistoryProps) {
           <Link
             key={order.id}
             href={`/orders/${order.id}`}
-            className="group block rounded-lg border p-4 transition-colors hover:bg-slate-50"
+            className="group block rounded-lg border p-4 transition-colors hover:bg-[#FAFAFA]"
           >
             <div className="grid gap-3 md:grid-cols-[140px_1fr_auto_auto] md:items-center">
-              <div className="text-sm text-slate-500">{formatDate(order.createdAt)}</div>
+              <div className="text-sm text-[#8B6F74]">{formatDate(order.createdAt)}</div>
               <div className="min-w-0">
-                <p className="truncate font-medium text-slate-900 group-hover:underline">
+                <p className="truncate font-medium text-[#1E1215] group-hover:underline">
                   {order.productName}
                 </p>
-                {order.brand ? <p className="text-sm text-slate-500">{order.brand}</p> : null}
+                {order.brand ? <p className="text-sm text-[#8B6F74]">{order.brand}</p> : null}
               </div>
               <div>
                 <StatusBadge status={order.status} />
@@ -74,7 +74,7 @@ export default function BuyerOrderHistory({ orders }: BuyerOrderHistoryProps) {
               <div
                 className={cn(
                   "text-sm font-semibold",
-                  balanceDue > 0 ? "text-amber-600" : "text-slate-500"
+                  balanceDue > 0 ? "text-amber-600" : "text-[#8B6F74]"
                 )}
               >
                 {formatBdt(balanceDue)}

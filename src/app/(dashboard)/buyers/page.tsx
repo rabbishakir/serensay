@@ -30,7 +30,7 @@ export default async function BuyersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Buyers</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Buyers</h1>
         <BuyerDrawer
           mode="add"
           trigger={

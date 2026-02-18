@@ -167,7 +167,7 @@ function OrdersPageContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Orders</h1>
         <OrderDrawer
           mode="add"
           defaultBuyerId={defaultBuyerId}
@@ -203,7 +203,7 @@ function OrdersPageContent() {
           {buyerSearch ? (
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8B6F74]/70 hover:text-[#8B6F74]"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setBuyerSearch("")
@@ -217,12 +217,12 @@ function OrdersPageContent() {
           ) : null}
 
           {buyerDropdownOpen && !selectedBuyerId && filteredBuyerOptions.length > 0 ? (
-            <div className="absolute z-30 mt-1 w-full rounded-md border bg-white shadow">
+            <div className="absolute z-30 mt-1 w-full rounded-md border bg-[#FAFAFA] shadow">
               {filteredBuyerOptions.map((buyer) => (
                 <button
                   key={buyer.id}
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FAFAFA]"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setSelectedBuyerId(buyer.id)
@@ -334,7 +334,7 @@ function OrdersPageContent() {
           ) : null}
           <button
             type="button"
-            className="text-sm text-slate-500 underline hover:text-slate-700"
+            className="text-sm text-[#8B6F74] underline hover:text-[#5D4548]"
             onClick={() => {
               setSelectedBuyerId(null)
               setBuyerSearch("")
@@ -350,7 +350,7 @@ function OrdersPageContent() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading orders...</p>
+        <p className="text-sm text-[#8B6F74]">Loading orders...</p>
       ) : (
         <OrdersTable orders={visibleOrders} refetchOrders={fetchOrders} />
       )}
@@ -360,7 +360,7 @@ function OrdersPageContent() {
 
 export default function OrdersPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-slate-500">Loading orders...</p>}>
+    <Suspense fallback={<p className="text-sm text-[#8B6F74]">Loading orders...</p>}>
       <OrdersPageContent />
     </Suspense>
   )

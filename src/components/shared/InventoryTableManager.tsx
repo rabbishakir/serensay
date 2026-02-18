@@ -235,7 +235,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
               <TableRow>
                 <TableCell
                   colSpan={10}
-                  className="h-24 text-center text-slate-500"
+                  className="h-24 text-center text-[#8B6F74]"
                 >
                   No items found.
                 </TableCell>
@@ -250,11 +250,20 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
                     <TableCell>{item.shade || "-"}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {item.tags.map((tag) => (
-                          <Badge key={`${item.id}-${tag}`} className="bg-blue-600 text-white">
-                            {tag}
-                          </Badge>
-                        ))}
+                        {item.tags.map((tag) => {
+                          const normalized = tag.trim().toLowerCase()
+                          const className =
+                            normalized === "stocked"
+                              ? "border border-[#E8C8CC] bg-[#FCEEF0] text-[#A86870]"
+                              : normalized === "order arrived"
+                                ? "bg-[#FEF3C7] text-[#92400E]"
+                                : "border border-[#EDE0E2] bg-[#F7F3F4] text-[#5D4548]"
+                          return (
+                            <Badge key={`${item.id}-${tag}`} className={className}>
+                              {tag}
+                            </Badge>
+                          )
+                        })}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -280,14 +289,14 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
                       ) : (
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-100"
+                          className="inline-flex items-center gap-2 rounded px-1 py-0.5 hover:bg-[#FCEEF0]"
                           onClick={() => {
                             setQtyEditingId(item.id)
                             setQtyDraft(String(item.qty))
                           }}
                         >
                           <span>{item.qty}</span>
-                          {lowStock ? <span className="h-2 w-2 rounded-full bg-red-500" /> : null}
+                          {lowStock ? <span className="h-2 w-2 rounded-full bg-[#C4878E]" /> : null}
                         </button>
                       )}
                     </TableCell>

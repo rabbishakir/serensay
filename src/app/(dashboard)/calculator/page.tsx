@@ -111,8 +111,8 @@ export default function CalculatorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Price Calculator</h1>
-        <p className="text-sm text-slate-500">Reference tool only. No values are saved.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Price Calculator</h1>
+        <p className="text-sm text-[#8B6F74]">Reference tool only. No values are saved.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -174,28 +174,28 @@ export default function CalculatorPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
-            <p className="text-sm text-slate-600">
-              Buy Price in BDT: <span className="text-lg font-semibold text-slate-900">{formatBdt(computed.buyPriceBdt)}</span>
+            <p className="text-sm text-[#8B6F74]">
+              Buy Price in BDT: <span className="text-lg font-semibold text-[#1E1215]">{formatBdt(computed.buyPriceBdt)}</span>
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-[#8B6F74]">
               Shipping Cost (BDT):{" "}
-              <span className="text-lg font-semibold text-slate-900">{formatBdt(computed.shippingCostBdt)}</span>
+              <span className="text-lg font-semibold text-[#1E1215]">{formatBdt(computed.shippingCostBdt)}</span>
             </p>
-            <p className="text-sm text-slate-600">
-              Subtotal: <span className="text-lg font-semibold text-slate-900">{formatBdt(computed.subtotal)}</span>
+            <p className="text-sm text-[#8B6F74]">
+              Subtotal: <span className="text-lg font-semibold text-[#1E1215]">{formatBdt(computed.subtotal)}</span>
             </p>
-            <p className="text-sm text-slate-600">
-              Profit: <span className="text-lg font-semibold text-slate-900">{formatBdt(computed.profit)}</span>
+            <p className="text-sm text-[#8B6F74]">
+              Profit: <span className="text-lg font-semibold text-[#1E1215]">{formatBdt(computed.profit)}</span>
             </p>
-            <p className="text-sm text-slate-600 md:col-span-2">
+            <p className="text-sm text-[#8B6F74] md:col-span-2">
               Suggested Sell Price:{" "}
               <span className="text-3xl font-bold text-[hsl(var(--brand))]">
                 {formatBdt(computed.suggestedSellPrice)}
               </span>
             </p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-[#8B6F74]">
               Margin Achieved %:{" "}
-              <span className="text-lg font-semibold text-slate-900">
+              <span className="text-lg font-semibold text-[#1E1215]">
                 {computed.marginAchievedPct.toFixed(2)}%
               </span>
             </p>

@@ -65,48 +65,54 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-slate-500">Operational snapshot for Glam Orbit Lite.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Dashboard</h1>
+        <p className="text-sm text-[#8B6F74]">Operational snapshot for Glam Orbit Lite.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="rounded-xl border border-[#EDE0E2] bg-white shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Total Orders This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-[#8B6F74]">Total Orders This Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{stats.totalThisMonth}</p>
+            <p className="text-3xl font-bold text-[#1E1215]">{stats.totalThisMonth}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="rounded-xl border border-[#EDE0E2] bg-white shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Pending Purchase</CardTitle>
+            <CardTitle className="text-sm font-medium text-[#8B6F74]">Pending Purchase</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{stats.pendingPurchase}</p>
+            <p className="text-3xl font-bold text-[#1E1215]">{stats.pendingPurchase}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="rounded-xl border border-[#EDE0E2] bg-white shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">In Bangladesh</CardTitle>
+            <CardTitle className="text-sm font-medium text-[#8B6F74]">In Bangladesh</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{stats.inBangladesh}</p>
+            <p className="text-3xl font-bold text-[#1E1215]">{stats.inBangladesh}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="rounded-xl border border-[#EDE0E2] bg-white shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Outstanding Balance Total (BDT)</CardTitle>
+            <CardTitle className="text-sm font-medium text-[#8B6F74]">Outstanding Balance Total (BDT)</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{formatBdt(stats.outstandingBalance)}</p>
+            <p
+              className={`text-3xl font-bold ${
+                stats.outstandingBalance > 0 ? "text-[#C4878E]" : "text-[#1E1215]"
+              }`}
+            >
+              {formatBdt(stats.outstandingBalance)}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+      <Card className="rounded-xl border border-[#EDE0E2] bg-white shadow-sm">
         <CardHeader>
-          <CardTitle>Action Needed</CardTitle>
+          <CardTitle className="font-semibold text-[#1E1215]">Action Needed</CardTitle>
         </CardHeader>
         <CardContent>
           <DashboardActionNeededTable orders={actionNeeded} />

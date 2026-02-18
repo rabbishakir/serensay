@@ -21,7 +21,7 @@ export default async function BdInventoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">BD Inventory</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">BD Inventory</h1>
       <InventoryTableManager type="bd" initialItems={items} />
     </div>
   )

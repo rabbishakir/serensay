@@ -56,11 +56,11 @@ type ShipmentDetailClientProps = {
 function shipmentBadgeClass(status: "PACKING" | "IN_TRANSIT" | "ARRIVED") {
   switch (status) {
     case "PACKING":
-      return "bg-amber-100 text-amber-800 border-amber-200"
+      return "bg-[#FEF3C7] text-[#92400E]"
     case "IN_TRANSIT":
-      return "bg-blue-100 text-blue-800 border-blue-200"
+      return "bg-[#DBEAFE] text-[#1E40AF]"
     case "ARRIVED":
-      return "bg-green-100 text-green-800 border-green-200"
+      return "bg-[#DCFCE7] text-[#166534]"
   }
 }
 
@@ -166,12 +166,12 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{shipment.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">{shipment.name}</h1>
           <div className="flex items-center gap-2">
             <Badge className={shipmentBadgeClass(shipment.status)}>{shipment.status}</Badge>
           </div>
-          <p className="text-sm text-slate-600">Departure: {formatDate(shipment.departureDate)}</p>
-          <p className="text-sm text-slate-600">Arrival: {formatDate(shipment.arrivalDate)}</p>
+          <p className="text-sm text-[#8B6F74]">Departure: {formatDate(shipment.departureDate)}</p>
+          <p className="text-sm text-[#8B6F74]">Arrival: {formatDate(shipment.arrivalDate)}</p>
         </div>
 
         <div className="flex gap-2">
@@ -199,7 +199,7 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
                       <TableBody>
                         {selectable.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={4} className="h-20 text-center text-slate-500">
+                            <TableCell colSpan={4} className="h-20 text-center text-[#8B6F74]">
                               No eligible orders.
                             </TableCell>
                           </TableRow>
@@ -263,7 +263,7 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
           <TableBody>
             {shipment.orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-20 text-center text-slate-500">
+                <TableCell colSpan={4} className="h-20 text-center text-[#8B6F74]">
                   No orders assigned to this shipment.
                 </TableCell>
               </TableRow>

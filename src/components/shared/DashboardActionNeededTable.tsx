@@ -42,7 +42,7 @@ export default function DashboardActionNeededTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
-            <tr className="border-b text-left text-slate-500">
+            <tr className="border-b text-left text-[#8B6F74]">
               <th className="px-2 py-2 font-medium">Buyer</th>
               <th className="px-2 py-2 font-medium">Product</th>
               <th className="px-2 py-2 font-medium">Status</th>
@@ -53,7 +53,7 @@ export default function DashboardActionNeededTable({
           <tbody>
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-2 py-6 text-center text-slate-500">
+                <td colSpan={5} className="px-2 py-6 text-center text-[#8B6F74]">
                   No action-needed orders.
                 </td>
               </tr>
@@ -73,7 +73,7 @@ export default function DashboardActionNeededTable({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                          className="border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
                           onClick={() => setBuyingOrder(order)}
                         >
                           Mark Bought

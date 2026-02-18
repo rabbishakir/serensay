@@ -104,7 +104,7 @@ export default function BuyersTable({ buyers }: BuyersTableProps) {
         cell: ({ row }) => {
           const outstanding = row.original.outstandingBalance ?? 0
           return (
-            <span className={cn(outstanding > 0 ? "text-red-600" : "text-slate-500")}>
+            <span className={cn(outstanding > 0 ? "text-red-600" : "text-[#8B6F74]")}>
               {formatBdt(outstanding)}
             </span>
           )
@@ -192,7 +192,7 @@ export default function BuyersTable({ buyers }: BuyersTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-slate-500">
+                <TableCell colSpan={columns.length} className="h-24 text-center text-[#8B6F74]">
                   No buyers found.
                 </TableCell>
               </TableRow>
@@ -211,7 +211,7 @@ export default function BuyersTable({ buyers }: BuyersTableProps) {
         >
           Previous
         </Button>
-        <span className="text-sm text-slate-600">
+        <span className="text-sm text-[#8B6F74]">
           Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
         </span>
         <Button

@@ -286,7 +286,7 @@ export default function OrderDrawer({
 
         if (match.qty === 0) {
           setStockIndicator({
-            text: "✗ Out of stock - will be treated as pre-order",
+            text: "Out of stock - will be treated as pre-order",
             tone: "red",
           })
           return
@@ -294,14 +294,14 @@ export default function OrderDrawer({
 
         if (match.qty <= 2) {
           setStockIndicator({
-            text: `⚠ Only ${match.qty} left in stock`,
+            text: `Only ${match.qty} left in stock`,
             tone: "amber",
           })
           return
         }
 
         setStockIndicator({
-          text: `✓ ${match.qty} in ${sourceLabel} stock`,
+          text: `${match.qty} in ${sourceLabel} stock`,
           tone: "green",
         })
       } catch {
@@ -526,7 +526,7 @@ export default function OrderDrawer({
             placeholder="Buyer"
             className={cn(
               showBuyerError ? "border-red-500 focus-visible:ring-red-500" : "",
-              buyerReadOnly ? "bg-slate-100" : ""
+              buyerReadOnly ? "bg-[#FAFAFA]" : ""
             )}
             onFocus={() => setBuyerFieldFocused(true)}
             onBlur={() => setTimeout(() => setBuyerFieldFocused(false), 120)}
@@ -544,12 +544,12 @@ export default function OrderDrawer({
             }}
           />
           {!buyerReadOnly && buyerFieldFocused && buyerSuggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow">
+            <div className="absolute z-20 mt-1 w-full rounded-md border bg-[#FAFAFA] shadow">
               {buyerSuggestions.map((b) => (
                 <button
                   key={b.id}
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FAFAFA]"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setForm((prev) => ({
@@ -578,12 +578,12 @@ export default function OrderDrawer({
             onChange={(e) => setForm((prev) => ({ ...prev, productName: e.target.value }))}
           />
           {productFieldFocused && productSuggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow">
+            <div className="absolute z-20 mt-1 w-full rounded-md border bg-[#FAFAFA] shadow">
               {productSuggestions.map((value) => (
                 <button
                   key={value}
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FAFAFA]"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setForm((prev) => ({ ...prev, productName: value }))
@@ -606,12 +606,12 @@ export default function OrderDrawer({
             onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))}
           />
           {brandFieldFocused && brandSuggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow">
+            <div className="absolute z-20 mt-1 w-full rounded-md border bg-[#FAFAFA] shadow">
               {brandSuggestions.map((value) => (
                 <button
                   key={value}
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FAFAFA]"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setForm((prev) => ({ ...prev, brand: value }))
@@ -632,7 +632,7 @@ export default function OrderDrawer({
         />
 
         <div className="space-y-2">
-          <p className="text-xs text-slate-500">Source</p>
+          <p className="text-xs text-[#8B6F74]">Source</p>
           <div className="grid grid-cols-3 gap-2">
             {SOURCE_OPTIONS.map((sourceOpt) => (
               <Button
@@ -700,7 +700,7 @@ export default function OrderDrawer({
                   ? "text-amber-600"
                   : stockIndicator.tone === "red"
                     ? "text-red-600"
-                    : "text-slate-500"
+                    : "text-[#8B6F74]"
             )}
           >
             {stockIndicator.text}
@@ -725,7 +725,7 @@ export default function OrderDrawer({
           />
         </div>
 
-        <p className={cn("text-sm", balanceDue > 0 ? "text-amber-600" : "text-slate-500")}>
+        <p className={cn("text-sm", balanceDue > 0 ? "text-amber-600" : "text-[#8B6F74]")}>
           Balance Due: {Number.isFinite(balanceDue) ? balanceDue.toLocaleString("en-BD") : "0"} BDT
         </p>
 
