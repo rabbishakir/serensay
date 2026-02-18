@@ -12,6 +12,9 @@
 
 @layer base {
   :root {
+    --brand:        214 89% 29%;    /* #0F4C81 deep blue */
+    --brand-light:  213 93% 95%;    /* #EFF6FF */
+    --accent:       27  47% 59%;    /* #C2956C rose gold */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
