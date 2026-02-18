@@ -1,7 +1,7 @@
 "use client"
 
 import { CalendarIcon } from "lucide-react"
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import type { DateRange } from "react-day-picker"
 
@@ -56,37 +56,33 @@ function OrdersPageContent() {
   const defaultBuyerName = searchParams.get("buyerName") ?? undefined
   const autoOpen = searchParams.get("new") === "true" || !!defaultBuyerId
 
+  const fetchOrders = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set("page", "1")
+      if (status !== "ALL") params.set("status", status)
+      if (source !== "ALL") params.set("source", source)
+      if (defaultBuyerId) params.set("buyerId", defaultBuyerId)
+      if (search.trim()) params.set("search", search.trim())
+
+      const res = await fetch(`/api/orders?${params.toString()}`, { cache: "no-store" })
+      if (!res.ok) return
+
+      const data = (await res.json()) as OrdersResponse
+      setOrders(data.orders)
+    } finally {
+      setLoading(false)
+    }
+  }, [defaultBuyerId, search, source, status])
+
   useEffect(() => {
     if (autoOpen) setOpenAdd(true)
   }, [autoOpen])
 
   useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      setLoading(true)
-      try {
-        const params = new URLSearchParams()
-        params.set("page", "1")
-        if (status !== "ALL") params.set("status", status)
-        if (source !== "ALL") params.set("source", source)
-        if (defaultBuyerId) params.set("buyerId", defaultBuyerId)
-        if (search.trim()) params.set("search", search.trim())
-
-        const res = await fetch(`/api/orders?${params.toString()}`, { cache: "no-store" })
-        if (!res.ok || cancelled) return
-
-        const data = (await res.json()) as OrdersResponse
-        if (cancelled) return
-        setOrders(data.orders)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      cancelled = true
-    }
-  }, [status, source, search, dateRange, defaultBuyerId])
+    void fetchOrders()
+  }, [fetchOrders, dateRange])
 
   const visibleOrders = useMemo(() => {
     if (!dateRange?.from && !dateRange?.to) return orders
@@ -173,7 +169,7 @@ function OrdersPageContent() {
       {loading ? (
         <p className="text-sm text-slate-500">Loading orders...</p>
       ) : (
-        <OrdersTable orders={visibleOrders} />
+        <OrdersTable orders={visibleOrders} refetchOrders={fetchOrders} />
       )}
     </div>
   )

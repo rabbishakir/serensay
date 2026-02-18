@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import {
   type ColumnDef,
@@ -11,6 +12,7 @@ import {
 import { toast } from "sonner"
 
 import OrderDrawer, { type OrderData } from "@/components/shared/OrderDrawer"
+import MarkBoughtDialog from "@/components/shared/MarkBoughtDialog"
 import StatusBadge from "@/components/shared/StatusBadge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +28,7 @@ import { cn } from "@/lib/utils"
 
 type OrdersTableProps = {
   orders: OrderData[]
+  refetchOrders?: () => void | Promise<void>
 }
 
 function formatDate(value: string) {
@@ -66,9 +69,11 @@ function sourceLabel(source: OrderData["source"]) {
   }
 }
 
-export default function OrdersTable({ orders }: OrdersTableProps) {
+export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps) {
+  const router = useRouter()
   const [rows, setRows] = useState<OrderData[]>(orders)
   const [editingOrder, setEditingOrder] = useState<OrderData | null>(null)
+  const [buyingOrder, setBuyingOrder] = useState<OrderData | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -181,6 +186,16 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
             <Button size="sm" variant="outline" onClick={() => setEditingOrder(row.original)}>
               Edit
             </Button>
+            {row.original.status === "TO_BE_PURCHASED" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                onClick={() => setBuyingOrder(row.original)}
+              >
+                Mark Bought
+              </Button>
+            ) : null}
             <Button
               size="sm"
               variant="destructive"
@@ -227,7 +242,11 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
                   key={row.id}
                   className={cn(
                     "cursor-pointer",
-                    balance > 0 ? "border-l-2 border-l-amber-200" : ""
+                    row.original.status === "TO_BE_PURCHASED"
+                      ? "border-l-2 border-l-amber-400"
+                      : balance > 0
+                        ? "border-l-2 border-l-amber-200"
+                        : ""
                   )}
                   onClick={() => setEditingOrder(row.original)}
                 >
@@ -260,6 +279,33 @@ export default function OrdersTable({ orders }: OrdersTableProps) {
           onSaved={onSaved}
         />
       ) : null}
+
+      <MarkBoughtDialog
+        order={
+          buyingOrder
+            ? {
+                id: buyingOrder.id,
+                productName: buyingOrder.productName,
+                brand: buyingOrder.brand,
+                shade: buyingOrder.shade,
+                qty: buyingOrder.qty,
+                buyerName: buyingOrder.buyer?.name ?? "Unknown buyer",
+              }
+            : null
+        }
+        open={buyingOrder !== null}
+        onOpenChange={(open) => {
+          if (!open) setBuyingOrder(null)
+        }}
+        onSuccess={() => {
+          setBuyingOrder(null)
+          if (refetchOrders) {
+            void refetchOrders()
+            return
+          }
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

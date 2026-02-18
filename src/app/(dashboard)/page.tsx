@@ -1,6 +1,6 @@
 import { headers } from "next/headers"
 
-import StatusBadge from "@/components/shared/StatusBadge"
+import DashboardActionNeededTable from "@/components/shared/DashboardActionNeededTable"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { prisma } from "@/lib/db"
 
@@ -109,41 +109,7 @@ export default async function DashboardPage() {
           <CardTitle>Action Needed</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-sm">
-              <thead>
-                <tr className="border-b text-left text-slate-500">
-                  <th className="px-2 py-2 font-medium">Buyer</th>
-                  <th className="px-2 py-2 font-medium">Product</th>
-                  <th className="px-2 py-2 font-medium">Status</th>
-                  <th className="px-2 py-2 font-medium">Balance Due</th>
-                </tr>
-              </thead>
-              <tbody>
-                {actionNeeded.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-2 py-6 text-center text-slate-500">
-                      No action-needed orders.
-                    </td>
-                  </tr>
-                ) : (
-                  actionNeeded.map((order) => {
-                    const balanceDue = order.sellPriceBdt - order.depositBdt
-                    return (
-                      <tr key={order.id} className="border-b last:border-0">
-                        <td className="px-2 py-3">{order.buyer.name}</td>
-                        <td className="px-2 py-3">{order.productName}</td>
-                        <td className="px-2 py-3">
-                          <StatusBadge status={order.status} />
-                        </td>
-                        <td className="px-2 py-3 font-medium">{formatBdt(balanceDue)}</td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DashboardActionNeededTable orders={actionNeeded} />
         </CardContent>
       </Card>
     </div>
