@@ -143,6 +143,20 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
         ),
       },
       {
+        id: "qty",
+        header: () => <span className="inline-block w-[60px]">Qty</span>,
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              "inline-block w-[60px]",
+              row.original.qty > 1 ? "font-semibold text-blue-600" : "text-slate-500"
+            )}
+          >
+            {row.original.qty}
+          </span>
+        ),
+      },
+      {
         id: "source",
         header: "Source",
         cell: ({ row }) => (

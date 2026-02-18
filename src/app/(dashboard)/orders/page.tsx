@@ -1,5 +1,6 @@
 "use client"
 
+import Fuse from "fuse.js"
 import { CalendarIcon } from "lucide-react"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
@@ -7,6 +8,7 @@ import type { DateRange } from "react-day-picker"
 
 import OrderDrawer, { type OrderData } from "@/components/shared/OrderDrawer"
 import OrdersTable from "@/components/shared/OrdersTable"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
@@ -35,6 +37,11 @@ type OrdersResponse = {
   totalPages: number
 }
 
+type BuyerOption = {
+  id: string
+  name: string
+}
+
 function formatRangeLabel(range: DateRange | undefined) {
   if (!range?.from && !range?.to) return "Date range"
   if (range?.from && !range?.to) return range.from.toLocaleDateString("en-BD")
@@ -49,12 +56,36 @@ function OrdersPageContent() {
   const [status, setStatus] = useState<StatusValue>("ALL")
   const [source, setSource] = useState<SourceValue>("ALL")
   const [search, setSearch] = useState("")
+  const [buyerSearch, setBuyerSearch] = useState("")
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string | null>(null)
+  const [buyerOptions, setBuyerOptions] = useState<BuyerOption[]>([])
+  const [buyerDropdownOpen, setBuyerDropdownOpen] = useState(false)
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [loading, setLoading] = useState(false)
 
   const defaultBuyerId = searchParams.get("buyerId") ?? undefined
   const defaultBuyerName = searchParams.get("buyerName") ?? undefined
   const autoOpen = searchParams.get("new") === "true" || !!defaultBuyerId
+
+  const buyerFuse = useMemo(
+    () =>
+      new Fuse(buyerOptions, {
+        keys: ["name"],
+        threshold: 0.3,
+      }),
+    [buyerOptions]
+  )
+
+  const filteredBuyerOptions = useMemo(() => {
+    const term = buyerSearch.trim()
+    if (!term) return buyerOptions.slice(0, 8)
+    return buyerFuse.search(term, { limit: 8 }).map((result) => result.item)
+  }, [buyerFuse, buyerOptions, buyerSearch])
+
+  const selectedBuyerName = useMemo(() => {
+    if (!selectedBuyerId) return ""
+    return buyerOptions.find((buyer) => buyer.id === selectedBuyerId)?.name ?? buyerSearch
+  }, [buyerOptions, selectedBuyerId, buyerSearch])
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -63,7 +94,7 @@ function OrdersPageContent() {
       params.set("page", "1")
       if (status !== "ALL") params.set("status", status)
       if (source !== "ALL") params.set("source", source)
-      if (defaultBuyerId) params.set("buyerId", defaultBuyerId)
+      if (selectedBuyerId) params.set("buyerId", selectedBuyerId)
       if (search.trim()) params.set("search", search.trim())
 
       const res = await fetch(`/api/orders?${params.toString()}`, { cache: "no-store" })
@@ -74,11 +105,32 @@ function OrdersPageContent() {
     } finally {
       setLoading(false)
     }
-  }, [defaultBuyerId, search, source, status])
+  }, [search, selectedBuyerId, source, status])
 
   useEffect(() => {
     if (autoOpen) setOpenAdd(true)
   }, [autoOpen])
+
+  useEffect(() => {
+    if (!defaultBuyerId) return
+    setSelectedBuyerId(defaultBuyerId)
+    setBuyerSearch(defaultBuyerName ?? "")
+  }, [defaultBuyerId, defaultBuyerName])
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      const res = await fetch("/api/buyers", { cache: "no-store" })
+      if (!res.ok || cancelled) return
+      const data = (await res.json()) as BuyerOption[]
+      if (cancelled) return
+      setBuyerOptions(data)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     void fetchOrders()
@@ -104,6 +156,14 @@ function OrdersPageContent() {
     })
   }, [orders, dateRange])
 
+  const hasActiveFilters =
+    !!selectedBuyerId ||
+    status !== "ALL" ||
+    source !== "ALL" ||
+    search.trim().length > 0 ||
+    !!dateRange?.from ||
+    !!dateRange?.to
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -119,7 +179,64 @@ function OrdersPageContent() {
         />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
+        <div className="relative">
+          <Input
+            placeholder="Filter by buyer..."
+            value={buyerSearch}
+            onFocus={() => setBuyerDropdownOpen(true)}
+            onBlur={() => setTimeout(() => setBuyerDropdownOpen(false), 120)}
+            onChange={(e) => {
+              const nextValue = e.target.value
+              setBuyerSearch(nextValue)
+              setBuyerDropdownOpen(true)
+              if (!nextValue.trim()) {
+                setSelectedBuyerId(null)
+                return
+              }
+              if (selectedBuyerId && nextValue !== selectedBuyerName) {
+                setSelectedBuyerId(null)
+              }
+            }}
+            className={buyerSearch ? "pr-8" : ""}
+          />
+          {buyerSearch ? (
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setBuyerSearch("")
+                setSelectedBuyerId(null)
+                setBuyerDropdownOpen(false)
+              }}
+              aria-label="Clear buyer filter"
+            >
+              x
+            </button>
+          ) : null}
+
+          {buyerDropdownOpen && !selectedBuyerId && filteredBuyerOptions.length > 0 ? (
+            <div className="absolute z-30 mt-1 w-full rounded-md border bg-white shadow">
+              {filteredBuyerOptions.map((buyer) => (
+                <button
+                  key={buyer.id}
+                  type="button"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setSelectedBuyerId(buyer.id)
+                    setBuyerSearch(buyer.name)
+                    setBuyerDropdownOpen(false)
+                  }}
+                >
+                  {buyer.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
         <Select value={status} onValueChange={(v) => setStatus(v as StatusValue)}>
           <SelectTrigger>
             <SelectValue placeholder="Status" />
@@ -165,6 +282,72 @@ function OrdersPageContent() {
           </PopoverContent>
         </Popover>
       </div>
+
+      {hasActiveFilters ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedBuyerId ? (
+            <Badge variant="outline" className="gap-1">
+              Buyer: {selectedBuyerName}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedBuyerId(null)
+                  setBuyerSearch("")
+                }}
+                aria-label="Clear buyer filter"
+              >
+                x
+              </button>
+            </Badge>
+          ) : null}
+          {status !== "ALL" ? (
+            <Badge variant="outline" className="gap-1">
+              Status: {status}
+              <button type="button" onClick={() => setStatus("ALL")} aria-label="Clear status filter">
+                x
+              </button>
+            </Badge>
+          ) : null}
+          {source !== "ALL" ? (
+            <Badge variant="outline" className="gap-1">
+              Source: {source}
+              <button type="button" onClick={() => setSource("ALL")} aria-label="Clear source filter">
+                x
+              </button>
+            </Badge>
+          ) : null}
+          {search.trim() ? (
+            <Badge variant="outline" className="gap-1">
+              Search: {search.trim()}
+              <button type="button" onClick={() => setSearch("")} aria-label="Clear search filter">
+                x
+              </button>
+            </Badge>
+          ) : null}
+          {dateRange?.from || dateRange?.to ? (
+            <Badge variant="outline" className="gap-1">
+              Date: {formatRangeLabel(dateRange)}
+              <button type="button" onClick={() => setDateRange(undefined)} aria-label="Clear date filter">
+                x
+              </button>
+            </Badge>
+          ) : null}
+          <button
+            type="button"
+            className="text-sm text-slate-500 underline hover:text-slate-700"
+            onClick={() => {
+              setSelectedBuyerId(null)
+              setBuyerSearch("")
+              setStatus("ALL")
+              setSource("ALL")
+              setSearch("")
+              setDateRange(undefined)
+            }}
+          >
+            Clear all
+          </button>
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="text-sm text-slate-500">Loading orders...</p>
