@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+ 
+datasource db {
+  provider  = "postgresql"
+}
+ 
+model Buyer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+  @@map("buyers")
+}
+ 
+model Order {
+  id           String      @id @default(cuid())
+  buyerId      String
+  buyer        Buyer       @relation(fields: [buyerId], references: [id])
+  productName  String
+  brand        String?
+  shade        String?
+  qty          Int         @default(1)
+  sellPriceBdt Float
+  buyPriceUsd  Float?
+  depositBdt   Float       @default(0)
+  source       Source      @default(PRE_ORDER)
+  status       OrderStatus @default(TO_BE_PURCHASED)
+  batchId      String?
+  batch        Shipment?   @relation(fields: [batchId], references: [id])
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  @@map("orders")
+}
+ 
+enum Source {
+  BD_STOCK
+  USA_STOCK
+  PRE_ORDER
+}
+ 
+enum OrderStatus {
+  TO_BE_PURCHASED
+  PURCHASED
+  IN_TRANSIT
+  IN_BANGLADESH
+  DELIVERED
+  RETURNED
+}
+ 
+model BdInventory {
+  id           String   @id @default(cuid())
+  productName  String
+  brand        String?
+  shade        String?
+  qty          Int      @default(0)
+  buyPriceBdt  Float?
+  sellPriceBdt Float?
+  updatedAt    DateTime @updatedAt
+  @@map("bd_inventory")
+}
+ 
+model UsaInventory {
+  id          String   @id @default(cuid())
+  productName String
+  brand       String?
+  shade       String?
+  qty         Int      @default(0)
+  buyPriceUsd Float?
+  weightG     Float?
+  updatedAt   DateTime @updatedAt
+  @@map("usa_inventory")
+}
+ 
+model Shipment {
+  id             String         @id @default(cuid())
+  name           String
+  departureDate  DateTime?
+  arrivalDate    DateTime?
+  status         ShipmentStatus @default(PACKING)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  orders         Order[]
+  @@map("shipments")
+}
+ 
+enum ShipmentStatus {
+  PACKING
+  IN_TRANSIT
+  ARRIVED
+}
+ 
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  @@map("settings")
+}
