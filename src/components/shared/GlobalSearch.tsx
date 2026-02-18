@@ -2,7 +2,7 @@
 
 import Fuse from "fuse.js"
 import { Search } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import OrderDrawer from "@/components/shared/OrderDrawer"
@@ -56,6 +56,12 @@ type SearchUsaInventory = {
 }
 
 const CACHE_TTL_MS = 60_000
+const EMPTY_RESULTS: SearchResponse = {
+  buyers: [],
+  orders: [],
+  bdInventory: [],
+  usaInventory: [],
+}
 
 function mergeById<T extends { id: string }>(base: T[], incoming: T[]) {
   const map = new Map<string, T>()
@@ -74,8 +80,15 @@ export default function GlobalSearch() {
     bdInventory: [],
     usaInventory: [],
   })
+  const [results, setResults] = useState<SearchResponse>({
+    buyers: [],
+    orders: [],
+    bdInventory: [],
+    usaInventory: [],
+  })
   const [cacheAt, setCacheAt] = useState<number>(0)
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const searchRequestRef = useRef(0)
   const [orderDrawerOpen, setOrderDrawerOpen] = useState(false)
   const [blankOrderDrawerOpen, setBlankOrderDrawerOpen] = useState(false)
   const [prefilledProduct, setPrefilledProduct] = useState<{
@@ -101,18 +114,22 @@ export default function GlobalSearch() {
   const formatUsd = (value: number | null | undefined) =>
     value == null ? "-" : `$${value.toFixed(2)}`
 
-  const hydrateCache = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/search?q=", { cache: "no-store" })
-      if (!res.ok) return
-      const data = (await res.json()) as SearchResponse
-      setCache(data)
-      setCacheAt(Date.now())
-    } finally {
-      setLoading(false)
-    }
-  }
+  const fetchSearchData = useCallback(async (term = "", merge = false) => {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, { cache: "no-store" })
+    if (!res.ok) return
+    const data = (await res.json()) as SearchResponse
+    setCache((prev) =>
+      merge
+        ? {
+            buyers: mergeById(prev.buyers, data.buyers),
+            orders: mergeById(prev.orders, data.orders),
+            bdInventory: mergeById(prev.bdInventory, data.bdInventory),
+            usaInventory: mergeById(prev.usaInventory, data.usaInventory),
+          }
+        : data
+    )
+    setCacheAt(Date.now())
+  }, [])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -127,100 +144,127 @@ export default function GlobalSearch() {
   }, [])
 
   useEffect(() => {
-    if (!open) return
-    if (
-      cache.buyers.length === 0 ||
-      cache.orders.length === 0 ||
-      cache.bdInventory.length === 0 ||
-      cache.usaInventory.length === 0 ||
-      isCacheStale
-    ) {
-      void hydrateCache()
-    }
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+    void fetchSearchData()
+  }, [fetchSearchData])
 
   useEffect(() => {
-    if (!open || query.trim().length < 2) return
+    if (!open) return
+    const isCacheEmpty =
+      cache.buyers.length === 0 &&
+      cache.orders.length === 0 &&
+      cache.bdInventory.length === 0 &&
+      cache.usaInventory.length === 0
+
+    if ((isCacheEmpty || isCacheStale) && query.trim().length < 2) {
+      void fetchSearchData()
+    }
+  }, [open, query, cache.buyers.length, cache.orders.length, cache.bdInventory.length, cache.usaInventory.length, isCacheStale, fetchSearchData])
+
+  const buyers = cache.buyers
+  const orders = cache.orders
+  const bdInventory = cache.bdInventory
+  const usaInventory = cache.usaInventory
+
+  const buyerFuse = useMemo(
+    () =>
+      new Fuse(buyers, {
+        keys: ["name", "phone"],
+        threshold: 0.3,
+      }),
+    [buyers]
+  )
+
+  const orderFuse = useMemo(
+    () =>
+      new Fuse(orders, {
+        keys: ["productName", "brand", "buyerName", "status"],
+        threshold: 0.3,
+      }),
+    [orders]
+  )
+
+  const bdInventoryFuse = useMemo(
+    () =>
+      new Fuse(bdInventory, {
+        keys: ["productName", "brand", "shade"],
+        threshold: 0.3,
+      }),
+    [bdInventory]
+  )
+
+  const usaInventoryFuse = useMemo(
+    () =>
+      new Fuse(usaInventory, {
+        keys: ["productName", "brand", "shade"],
+        threshold: 0.3,
+      }),
+    [usaInventory]
+  )
+
+  useEffect(() => {
+    if (!open) return
+
+    const term = query.trim()
+    if (term.length < 2) {
+      setResults(EMPTY_RESULTS)
+      setIsLoading(false)
+      return
+    }
+
+    const localResults = {
+      buyers: buyerFuse.search(term, { limit: 10 }).map((r) => r.item),
+      orders: orderFuse.search(term, { limit: 10 }).map((r) => r.item),
+      bdInventory: bdInventoryFuse.search(term, { limit: 10 }).map((r) => r.item),
+      usaInventory: usaInventoryFuse.search(term, { limit: 10 }).map((r) => r.item),
+    }
+    setResults(localResults)
 
     let cancelled = false
-    const run = async () => {
-      const term = encodeURIComponent(query.trim())
-      const res = await fetch(`/api/search?q=${term}`, { cache: "no-store" })
-      if (!res.ok || cancelled) return
-      const data = (await res.json()) as SearchResponse
-      if (cancelled) return
+    const requestId = ++searchRequestRef.current
+    setIsLoading(true)
 
-      setCache((prev) => ({
-        buyers: mergeById(prev.buyers, data.buyers),
-        orders: mergeById(prev.orders, data.orders),
-        bdInventory: mergeById(prev.bdInventory, data.bdInventory),
-        usaInventory: mergeById(prev.usaInventory, data.usaInventory),
-      }))
-      setCacheAt(Date.now())
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, { cache: "no-store" })
+        if (!res.ok || cancelled || requestId !== searchRequestRef.current) return
+        const data = (await res.json()) as SearchResponse
+        if (cancelled || requestId !== searchRequestRef.current) return
+
+        setCache((prev) => ({
+          buyers: mergeById(prev.buyers, data.buyers),
+          orders: mergeById(prev.orders, data.orders),
+          bdInventory: mergeById(prev.bdInventory, data.bdInventory),
+          usaInventory: mergeById(prev.usaInventory, data.usaInventory),
+        }))
+        setCacheAt(Date.now())
+
+        setResults({
+          buyers: mergeById(localResults.buyers, data.buyers).slice(0, 10),
+          orders: mergeById(localResults.orders, data.orders).slice(0, 10),
+          bdInventory: mergeById(localResults.bdInventory, data.bdInventory).slice(0, 10),
+          usaInventory: mergeById(localResults.usaInventory, data.usaInventory).slice(0, 10),
+        })
+      } catch {
+        // keep local fuse results on network error
+      } finally {
+        if (!cancelled && requestId === searchRequestRef.current) {
+          setIsLoading(false)
+        }
+      }
     }
 
     void run()
     return () => {
       cancelled = true
     }
-  }, [open, query])
-
-  const buyerFuse = useMemo(
-    () =>
-      new Fuse(cache.buyers, {
-        keys: ["name", "phone"],
-        threshold: 0.35,
-      }),
-    [cache.buyers]
-  )
-
-  const orderFuse = useMemo(
-    () =>
-      new Fuse(cache.orders, {
-        keys: ["productName", "brand", "buyerName", "status"],
-        threshold: 0.35,
-      }),
-    [cache.orders]
-  )
-
-  const bdInventoryFuse = useMemo(
-    () =>
-      new Fuse(cache.bdInventory, {
-        keys: ["productName", "brand", "shade"],
-        threshold: 0.35,
-      }),
-    [cache.bdInventory]
-  )
-
-  const usaInventoryFuse = useMemo(
-    () =>
-      new Fuse(cache.usaInventory, {
-        keys: ["productName", "brand", "shade"],
-        threshold: 0.35,
-      }),
-    [cache.usaInventory]
-  )
+  }, [open, query, buyerFuse, orderFuse, bdInventoryFuse, usaInventoryFuse])
 
   const normalizedQuery = query.trim()
-  const filteredBuyers = useMemo(() => {
-    if (!normalizedQuery) return cache.buyers.slice(0, 10)
-    return buyerFuse.search(normalizedQuery, { limit: 10 }).map((r) => r.item)
-  }, [buyerFuse, cache.buyers, normalizedQuery])
 
-  const filteredOrders = useMemo(() => {
-    if (!normalizedQuery) return cache.orders.slice(0, 10)
-    return orderFuse.search(normalizedQuery, { limit: 10 }).map((r) => r.item)
-  }, [orderFuse, cache.orders, normalizedQuery])
-
-  const filteredBdInventory = useMemo(() => {
-    if (normalizedQuery.length < 2) return []
-    return bdInventoryFuse.search(normalizedQuery, { limit: 10 }).map((r) => r.item)
-  }, [bdInventoryFuse, normalizedQuery])
-
-  const filteredUsaInventory = useMemo(() => {
-    if (normalizedQuery.length < 2) return []
-    return usaInventoryFuse.search(normalizedQuery, { limit: 10 }).map((r) => r.item)
-  }, [usaInventoryFuse, normalizedQuery])
+  const filteredBuyers = normalizedQuery.length < 2 ? buyers.slice(0, 10) : results.buyers
+  const filteredOrders = normalizedQuery.length < 2 ? orders.slice(0, 10) : results.orders
+  const filteredBdInventory = normalizedQuery.length < 2 ? [] : results.bdInventory
+  const filteredUsaInventory = normalizedQuery.length < 2 ? [] : results.usaInventory
 
   const hasAnyResults =
     filteredBdInventory.length > 0 ||
@@ -248,8 +292,8 @@ export default function GlobalSearch() {
         />
         <CommandList>
           <CommandEmpty>
-            {loading ? (
-              "Loading..."
+            {isLoading && normalizedQuery.length >= 2 ? (
+              <p className="animate-pulse text-sm text-[#8B6F74]">Searching...</p>
             ) : normalizedQuery.length >= 2 && !hasAnyResults ? (
               <div className="space-y-3">
                 <p>No results found for: {normalizedQuery}</p>
