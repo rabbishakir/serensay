@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -28,6 +29,11 @@ function parseStockItems(raw: unknown): ShipmentStockItem[] {
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const shipment = await prisma.shipment.findUnique({
       where: { id: params.id },
@@ -71,6 +77,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof ShipmentStockPayloadSchema>
   try {
     const body = await req.json()

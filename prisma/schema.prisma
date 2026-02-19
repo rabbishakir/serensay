@@ -34,6 +34,7 @@ model Order {
   status       OrderStatus @default(TO_BE_PURCHASED)
   batchId      String?
   batch        Shipment?   @relation(fields: [batchId], references: [id])
+  tags         String[]    @default([])
   notes        String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt

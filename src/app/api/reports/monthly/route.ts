@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { prisma } from "@/lib/db"
+import { getSession } from "@/lib/session"
 
 function toMonthLabel(year: number, monthIndex: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}`
@@ -34,6 +35,14 @@ function parseMonthParam(monthParam: string | null) {
 }
 
 export async function GET(req: NextRequest) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+  if (session.role !== "admin") {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 })
+  }
+
   const parsedMonth = parseMonthParam(req.nextUrl.searchParams.get("month"))
   if (!parsedMonth) {
     return NextResponse.json(

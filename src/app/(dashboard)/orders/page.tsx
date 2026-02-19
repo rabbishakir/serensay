@@ -11,6 +11,7 @@ import OrdersTable from "@/components/shared/OrdersTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -61,6 +62,8 @@ function OrdersPageContent() {
   const [selectedBuyerId, setSelectedBuyerId] = useState<string | null>(null)
   const [buyerOptions, setBuyerOptions] = useState<BuyerOption[]>([])
   const [buyerDropdownOpen, setBuyerDropdownOpen] = useState(false)
+  const [tagOptions, setTagOptions] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [loading, setLoading] = useState(false)
 
@@ -97,13 +100,43 @@ function OrdersPageContent() {
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      params.set("page", "1")
-      if (status !== "ALL") params.set("status", status)
-      if (source !== "ALL") params.set("source", source)
-      if (selectedBuyerId) params.set("buyerId", selectedBuyerId)
-      if (search.trim()) params.set("search", search.trim())
+      const buildParams = () => {
+        const params = new URLSearchParams()
+        params.set("page", "1")
+        if (status !== "ALL") params.set("status", status)
+        if (source !== "ALL") params.set("source", source)
+        if (selectedBuyerId) params.set("buyerId", selectedBuyerId)
+        if (search.trim()) params.set("search", search.trim())
+        return params
+      }
 
+      if (selectedTags.length > 0) {
+        const responses = await Promise.all(
+          selectedTags.map(async (tag) => {
+            const params = buildParams()
+            params.set("tag", tag)
+            const res = await fetch(`/api/orders?${params.toString()}`, { cache: "no-store" })
+            if (!res.ok) return null
+            return (await res.json()) as OrdersResponse
+          })
+        )
+
+        const mergedMap = new Map<string, OrderData>()
+        for (const response of responses) {
+          for (const order of response?.orders ?? []) {
+            mergedMap.set(order.id, order)
+          }
+        }
+
+        const mergedOrders = Array.from(mergedMap.values())
+          .filter((order) => selectedTags.some((tag) => (order.tags ?? []).includes(tag)))
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+        setOrders(mergedOrders)
+        return
+      }
+
+      const params = buildParams()
       const res = await fetch(`/api/orders?${params.toString()}`, { cache: "no-store" })
       if (!res.ok) return
 
@@ -112,7 +145,7 @@ function OrdersPageContent() {
     } finally {
       setLoading(false)
     }
-  }, [search, selectedBuyerId, source, status])
+  }, [search, selectedBuyerId, selectedTags, source, status])
 
   useEffect(() => {
     if (autoOpen) setOpenAdd(true)
@@ -132,6 +165,21 @@ function OrdersPageContent() {
       const data = (await res.json()) as BuyerOption[]
       if (cancelled) return
       setBuyerOptions(data)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      const res = await fetch("/api/settings/order-tags", { cache: "no-store" })
+      if (!res.ok || cancelled) return
+      const data = (await res.json()) as { tags?: string[] }
+      if (cancelled) return
+      setTagOptions(Array.isArray(data?.tags) ? data.tags : [])
     }
     void run()
     return () => {
@@ -167,6 +215,7 @@ function OrdersPageContent() {
     !!selectedBuyerId ||
     status !== "ALL" ||
     source !== "ALL" ||
+    selectedTags.length > 0 ||
     search.trim().length > 0 ||
     !!dateRange?.from ||
     !!dateRange?.to
@@ -186,7 +235,7 @@ function OrdersPageContent() {
         />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-6">
         <div className="relative">
           <Input
             placeholder="Filter by buyer..."
@@ -239,7 +288,7 @@ function OrdersPageContent() {
                 >
                   <span>{buyer.name}</span>
                   {buyer.phone ? (
-                    <span className="ml-2 text-xs text-[#8B6F74]">· {buyer.phone}</span>
+                    <span className="ml-2 text-xs text-[#8B6F74]">- {buyer.phone}</span>
                   ) : null}
                 </button>
               ))}
@@ -274,6 +323,42 @@ function OrdersPageContent() {
           </SelectContent>
         </Select>
 
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="justify-between">
+              {selectedTags.length > 0 ? `Tags (${selectedTags.length})` : "All Tags"}
+              {selectedTags.length > 0 ? (
+                <Badge variant="secondary" className="ml-2">
+                  {selectedTags.length}
+                </Badge>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3" align="start">
+            {tagOptions.length === 0 ? (
+              <p className="text-xs text-[#8B6F74]">No tags configured.</p>
+            ) : (
+              <div className="space-y-2">
+                {tagOptions.map((tag) => (
+                  <label key={tag} className="flex cursor-pointer items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={selectedTags.includes(tag)}
+                      onCheckedChange={(checked) => {
+                        setSelectedTags((prev) =>
+                          checked === true
+                            ? Array.from(new Set([...prev, tag]))
+                            : prev.filter((value) => value !== tag)
+                        )
+                      }}
+                    />
+                    <span>{tag}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
         <Input
           placeholder="Search product or brand..."
           value={search}
@@ -299,7 +384,7 @@ function OrdersPageContent() {
             <Badge variant="outline" className="gap-1">
               Buyer: {selectedBuyerName}
               {selectedBuyerPhone ? (
-                <span className="text-xs text-[#8B6F74]">· {selectedBuyerPhone}</span>
+                <span className="text-xs text-[#8B6F74]">- {selectedBuyerPhone}</span>
               ) : null}
               <button
                 type="button"
@@ -329,6 +414,18 @@ function OrdersPageContent() {
               </button>
             </Badge>
           ) : null}
+          {selectedTags.map((tag) => (
+            <Badge key={tag} variant="outline" className="gap-1">
+              Tag: {tag}
+              <button
+                type="button"
+                onClick={() => setSelectedTags((prev) => prev.filter((value) => value !== tag))}
+                aria-label={`Clear ${tag} tag filter`}
+              >
+                x
+              </button>
+            </Badge>
+          ))}
           {search.trim() ? (
             <Badge variant="outline" className="gap-1">
               Search: {search.trim()}
@@ -353,6 +450,7 @@ function OrdersPageContent() {
               setBuyerSearch("")
               setStatus("ALL")
               setSource("ALL")
+              setSelectedTags([])
               setSearch("")
               setDateRange(undefined)
             }}
@@ -378,3 +476,4 @@ export default function OrdersPage() {
     </Suspense>
   )
 }
+

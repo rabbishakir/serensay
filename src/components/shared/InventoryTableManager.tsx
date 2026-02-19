@@ -31,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { cn } from "@/lib/utils"
 
 type InventoryItem = BdInventoryItem | UsaInventoryItem
 
@@ -163,11 +162,6 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
     XLSX.utils.book_append_sheet(wb, ws, type === "bd" ? "BD Inventory" : "USA Inventory")
     XLSX.writeFile(wb, type === "bd" ? "bd-inventory.xlsx" : "usa-inventory.xlsx")
   }
-
-  const sorted = useMemo(
-    () => [...items].sort((a, b) => a.productName.localeCompare(b.productName)),
-    [items]
-  )
 
   const distinctBrands = useMemo(
     () =>

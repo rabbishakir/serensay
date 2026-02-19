@@ -23,12 +23,14 @@ async function getDashboardStats() {
   const h = await headers()
   const host = h.get("x-forwarded-host") ?? h.get("host")
   const proto = h.get("x-forwarded-proto") ?? "http"
+  const cookie = h.get("cookie")
   if (!host) {
     throw new Error("Missing request host header for dashboard API fetch.")
   }
 
   const res = await fetch(`${proto}://${host}/api/dashboard`, {
     cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
   })
 
   if (!res.ok) {

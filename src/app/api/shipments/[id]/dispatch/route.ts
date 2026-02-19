@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const shipment = await prisma.shipment.findUnique({
       where: { id: params.id },

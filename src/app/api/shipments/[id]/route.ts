@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -12,6 +13,11 @@ const ShipmentUpdateSchema = z.object({
 })
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const shipment = await prisma.shipment.findUnique({
       where: { id: params.id },
@@ -50,6 +56,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof ShipmentUpdateSchema>
   try {
     const body = await req.json()
@@ -91,6 +102,11 @@ export async function DELETE(
   _request: Request,
   { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
+  const session = await getSession(_request)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const { id } = await params
 

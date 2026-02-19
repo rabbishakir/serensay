@@ -4,11 +4,24 @@ import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
-const DEFAULT_TAGS = ["Stocked", "Order Arrived"]
+const DEFAULT_ORDER_TAGS = ["delay-rev", "hold", "back-to-shelf", "urgent"]
 
-const TagsSchema = z.object({
+const OrderTagsSchema = z.object({
   tags: z.array(z.string().min(1).max(30)).max(20),
 })
+
+function parseStoredTags(value: string | null | undefined) {
+  if (!value) return DEFAULT_ORDER_TAGS
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (Array.isArray(parsed) && parsed.every((tag) => typeof tag === "string")) {
+      return parsed
+    }
+    return DEFAULT_ORDER_TAGS
+  } catch {
+    return DEFAULT_ORDER_TAGS
+  }
+}
 
 export async function GET(request: Request) {
   const session = await getSession(request)
@@ -18,25 +31,13 @@ export async function GET(request: Request) {
 
   try {
     const setting = await prisma.setting.findUnique({
-      where: { key: "inventory_tags" },
+      where: { key: "order_tags" },
       select: { value: true },
     })
 
-    if (!setting) {
-      return NextResponse.json({ tags: DEFAULT_TAGS })
-    }
-
-    try {
-      const parsed = JSON.parse(setting.value) as unknown
-      if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string")) {
-        return NextResponse.json({ tags: parsed })
-      }
-      return NextResponse.json({ tags: DEFAULT_TAGS })
-    } catch {
-      return NextResponse.json({ tags: DEFAULT_TAGS })
-    }
+    return NextResponse.json({ tags: parseStoredTags(setting?.value) })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch inventory tags."
+    const message = error instanceof Error ? error.message : "Failed to fetch order tags."
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
@@ -47,10 +48,10 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorised" }, { status: 401 })
   }
 
-  let parsed: z.infer<typeof TagsSchema>
+  let parsed: z.infer<typeof OrderTagsSchema>
   try {
     const body = await req.json()
-    parsed = TagsSchema.parse(body)
+    parsed = OrderTagsSchema.parse(body)
   } catch (error) {
     const message = error instanceof z.ZodError ? error.issues[0]?.message : "Invalid request body."
     return NextResponse.json({ error: message }, { status: 400 })
@@ -58,14 +59,14 @@ export async function POST(req: Request) {
 
   try {
     await prisma.setting.upsert({
-      where: { key: "inventory_tags" },
+      where: { key: "order_tags" },
       update: { value: JSON.stringify(parsed.tags) },
-      create: { key: "inventory_tags", value: JSON.stringify(parsed.tags) },
+      create: { key: "order_tags", value: JSON.stringify(parsed.tags) },
     })
 
     return NextResponse.json({ tags: parsed.tags })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to save inventory tags."
+    const message = error instanceof Error ? error.message : "Failed to save order tags."
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -1,9 +1,15 @@
 import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
 export async function GET(req: NextRequest) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   const field = req.nextUrl.searchParams.get("field")
 
   if (field !== "productName" && field !== "brand") {

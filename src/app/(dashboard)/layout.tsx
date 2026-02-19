@@ -2,9 +2,11 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
-import type { ReactNode } from "react"
+import { LogOut } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import GlobalSearch from "@/components/shared/GlobalSearch"
+import { Button } from "@/components/ui/button"
 
 type NavItem = {
   label: string
@@ -24,8 +26,56 @@ const navItems: NavItem[] = [
   { label: "Settings", href: "/settings", matchPrefix: true },
 ]
 
+type CurrentUser = {
+  username: string
+  role: "admin" | "moderator"
+}
+
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const [user, setUser] = useState<CurrentUser | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadUser = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" })
+        if (!response.ok) {
+          if (!cancelled) router.push("/login")
+          return
+        }
+
+        const data = (await response.json()) as {
+          username: string
+          role: "admin" | "moderator"
+        }
+
+        if (!cancelled) {
+          setUser({ username: data.username, role: data.role })
+        }
+      } catch {
+        if (!cancelled) router.push("/login")
+      }
+    }
+
+    void loadUser()
+    return () => {
+      cancelled = true
+    }
+  }, [router])
+
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => item.label !== "Reports" || user?.role === "admin"),
+    [user]
+  )
+
+  const onLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    router.push("/login")
+    router.refresh()
+  }
 
   const isActive = (item: NavItem) => {
     if (item.href === "/") return pathname === "/"
@@ -55,7 +105,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <div className="mx-4 mb-2 mt-4 border-b border-[#E8C8CC]" />
           </div>
           <nav className="flex-1 space-y-1 px-3">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isActive(item)
               return (
                 <Link
@@ -81,6 +131,32 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             >
               + New Order
             </Link>
+          </div>
+          <div className="px-4 pb-4">
+            {user ? (
+              <div className="mb-3 rounded-lg border border-[#EDE0E2] bg-white p-3">
+                <p className="text-xs font-bold text-[#1E1215]">{user.username}</p>
+                <span
+                  className={[
+                    "mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-medium",
+                    user.role === "admin"
+                      ? "bg-[#FCEEF0] text-[#C4878E]"
+                      : "bg-[#F7F3F4] text-[#A08488]",
+                  ].join(" ")}
+                >
+                  {user.role === "admin" ? "Admin" : "Moderator"}
+                </span>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onLogout}
+              className="w-full justify-start text-sm text-[#A08488] hover:bg-[#FCEEF0] hover:text-[#1E1215]"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
           </div>
         </div>
       </aside>

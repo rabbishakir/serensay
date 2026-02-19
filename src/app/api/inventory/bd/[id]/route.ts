@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -14,6 +15,11 @@ const BdInventoryUpdateSchema = z.object({
 })
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const item = await prisma.bdInventory.findUnique({
       where: { id: params.id },
@@ -29,6 +35,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof BdInventoryUpdateSchema>
   try {
     const body = await req.json()
@@ -55,6 +66,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const deleted = await prisma.bdInventory.delete({
       where: { id: params.id },

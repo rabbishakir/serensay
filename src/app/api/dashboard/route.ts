@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
-export async function GET() {
+export async function GET(request: Request) {
+  const session = await getSession(request)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)

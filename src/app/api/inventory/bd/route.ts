@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -14,6 +15,11 @@ const BdInventorySchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   const search = req.nextUrl.searchParams.get("search")?.trim()
   try {
     const items = await prisma.bdInventory.findMany({
@@ -35,6 +41,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: Request) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof BdInventorySchema>
   try {
     const body = await req.json()

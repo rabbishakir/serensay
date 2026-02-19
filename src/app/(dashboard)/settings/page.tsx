@@ -23,6 +23,7 @@ type TierRow = {
 }
 
 const DEFAULT_INVENTORY_TAGS = ["Stocked", "Order Arrived", "Hold", "Gift", "Damaged"]
+const DEFAULT_ORDER_TAGS = ["delay-rev", "hold", "back-to-shelf", "urgent"]
 
 function formatDate(value?: string) {
   if (!value) return "Not saved yet"
@@ -42,16 +43,19 @@ export default function SettingsPage() {
   const [tierRows, setTierRows] = useState<TierRow[]>([])
   const [inventoryTags, setInventoryTags] = useState<string[]>(DEFAULT_INVENTORY_TAGS)
   const [tagDraft, setTagDraft] = useState("")
+  const [orderTags, setOrderTags] = useState<string[]>(DEFAULT_ORDER_TAGS)
+  const [orderTagDraft, setOrderTagDraft] = useState("")
   const [metaMap, setMetaMap] = useState<Record<string, SettingMeta>>({})
   const [savingKey, setSavingKey] = useState<string | null>(null)
 
   const refreshSettings = useCallback(async () => {
     setLoading(true)
     try {
-      const [settingsRes, metaRes, tagsRes] = await Promise.all([
+      const [settingsRes, metaRes, tagsRes, orderTagsRes] = await Promise.all([
         fetch("/api/settings", { cache: "no-store" }),
         fetch("/api/settings/meta", { cache: "no-store" }),
         fetch("/api/settings/tags", { cache: "no-store" }),
+        fetch("/api/settings/order-tags", { cache: "no-store" }),
       ])
 
       if (settingsRes.ok) {
@@ -97,6 +101,14 @@ export default function SettingsPage() {
         setInventoryTags(parsed.length > 0 ? parsed : DEFAULT_INVENTORY_TAGS)
       } else {
         setInventoryTags(DEFAULT_INVENTORY_TAGS)
+      }
+
+      if (orderTagsRes.ok) {
+        const tagsData = (await orderTagsRes.json()) as { tags?: string[] }
+        const parsed = Array.isArray(tagsData?.tags) ? tagsData.tags : []
+        setOrderTags(parsed.length > 0 ? parsed : DEFAULT_ORDER_TAGS)
+      } else {
+        setOrderTags(DEFAULT_ORDER_TAGS)
       }
     } finally {
       setLoading(false)
@@ -157,6 +169,39 @@ export default function SettingsPage() {
       await refreshSettings()
     } catch {
       toast.error("Failed to save tags.")
+    } finally {
+      setSavingKey(null)
+    }
+  }
+
+  const addOrderTag = () => {
+    const next = orderTagDraft.trim()
+    if (!next) return
+    if (orderTags.includes(next)) {
+      setOrderTagDraft("")
+      return
+    }
+    setOrderTags((prev) => [...prev, next])
+    setOrderTagDraft("")
+  }
+
+  const saveOrderTags = async () => {
+    setSavingKey("order_tags")
+    try {
+      const res = await fetch("/api/settings/order-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: orderTags }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data?.error ?? "Failed to save order tags.")
+        return
+      }
+      toast.success("Order tags saved")
+      await refreshSettings()
+    } catch {
+      toast.error("Failed to save order tags.")
     } finally {
       setSavingKey(null)
     }
@@ -371,6 +416,52 @@ export default function SettingsPage() {
 
           <Button onClick={() => void saveTags()} disabled={savingKey === "inventory_tags"}>
             {savingKey === "inventory_tags" ? "Saving..." : "Save Tags"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Order Tags</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {orderTags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="gap-1">
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  className="text-xs opacity-80 hover:opacity-100"
+                  onClick={() =>
+                    setOrderTags((prev) => prev.filter((value) => value !== tag))
+                  }
+                  aria-label={`Remove ${tag}`}
+                >
+                  x
+                </button>
+              </Badge>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <Input
+              value={orderTagDraft}
+              placeholder="Tag name"
+              onChange={(e) => setOrderTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  addOrderTag()
+                }
+              }}
+            />
+            <Button type="button" variant="outline" onClick={addOrderTag}>
+              Add Tag
+            </Button>
+          </div>
+
+          <Button onClick={() => void saveOrderTags()} disabled={savingKey === "order_tags"}>
+            {savingKey === "order_tags" ? "Saving..." : "Save Tags"}
           </Button>
         </CardContent>
       </Card>

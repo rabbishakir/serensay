@@ -1,6 +1,7 @@
 import { OrderStatus } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 import { restoreToInventory } from "@/lib/inventoryUtils"
@@ -14,6 +15,11 @@ const OrderUpdateSchema = OrderSchema.partial()
 class NotFoundError extends Error {}
 
 export async function GET(_req: NextRequest, { params }: Params) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const order = await prisma.order.findUnique({
       where: { id: params.id },
@@ -40,6 +46,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsedBody: z.infer<typeof OrderUpdateSchema>
 
   try {
@@ -109,6 +120,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       const existing = await tx.order.findUnique({

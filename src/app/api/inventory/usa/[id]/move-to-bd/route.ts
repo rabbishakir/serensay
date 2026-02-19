@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -8,6 +9,11 @@ const MoveSchema = z.object({
 })
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof MoveSchema>
   try {
     const body = await req.json()

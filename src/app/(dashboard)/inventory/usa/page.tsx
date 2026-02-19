@@ -7,10 +7,12 @@ async function getUsaInventory() {
   const h = headers()
   const host = h.get("x-forwarded-host") ?? h.get("host")
   const proto = h.get("x-forwarded-proto") ?? "http"
+  const cookie = h.get("cookie")
   if (!host) throw new Error("Missing request host header.")
 
   const res = await fetch(`${proto}://${host}/api/inventory/usa`, {
     cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
   })
   if (!res.ok) throw new Error("Failed to fetch USA inventory.")
   return (await res.json()) as UsaInventoryItem[]

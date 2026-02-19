@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 import { BuyerSchema } from "@/lib/validations"
@@ -11,6 +12,11 @@ type Params = {
 const BuyerUpdateSchema = BuyerSchema.partial()
 
 export async function GET(_req: Request, { params }: Params) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const buyer = await prisma.buyer.findUnique({
       where: { id: params.id },
@@ -41,6 +47,11 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PATCH(req: Request, { params }: Params) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsedBody: z.infer<typeof BuyerUpdateSchema>
 
   try {
@@ -83,6 +94,11 @@ export async function PATCH(req: Request, { params }: Params) {
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
+  const session = await getSession(_req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const buyer = await tx.buyer.findUnique({

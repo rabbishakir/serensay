@@ -1,6 +1,7 @@
 import { type Prisma, OrderStatus, Source } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 import { deductFromInventory } from "@/lib/inventoryUtils"
@@ -14,6 +15,11 @@ function parseEnumValue<T extends string>(value: string | null, values: readonly
 }
 
 export async function GET(req: NextRequest) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   const params = req.nextUrl.searchParams
   const pageRaw = params.get("page") ?? "1"
   const page = Number(pageRaw)
@@ -34,11 +40,13 @@ export async function GET(req: NextRequest) {
 
   const buyerId = params.get("buyerId")
   const search = params.get("search")?.trim()
+  const tag = params.get("tag")?.trim()
 
   const where: Prisma.OrderWhereInput = {}
   if (status) where.status = status
   if (source) where.source = source
   if (buyerId) where.buyerId = buyerId
+  if (tag) where.tags = { has: tag }
   if (search) {
     where.OR = [
       { productName: { contains: search, mode: "insensitive" } },
@@ -74,6 +82,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof OrderSchema>
 
   try {
@@ -98,6 +111,7 @@ export async function POST(req: NextRequest) {
         data: {
           ...parsed,
           status,
+          tags: parsed.tags ?? [],
         },
         include: {
           buyer: {

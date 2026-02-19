@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 import { BuyerSchema } from "@/lib/validations"
 
 export async function GET(req: NextRequest) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const q = (req.nextUrl.searchParams.get("search") ?? "").trim()
     const hasQuery = q.length > 0
@@ -60,6 +66,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: Request) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsedBody: z.infer<typeof BuyerSchema>
 
   try {

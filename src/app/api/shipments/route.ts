@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -9,7 +10,12 @@ const ShipmentCreateSchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function GET() {
+export async function GET(request: Request) {
+  const session = await getSession(request)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const shipments = await prisma.shipment.findMany({
       include: {
@@ -27,6 +33,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof ShipmentCreateSchema>
   try {
     const body = await req.json()

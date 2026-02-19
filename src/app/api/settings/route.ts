@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -8,7 +9,12 @@ const UpsertSettingSchema = z.object({
   value: z.string(),
 })
 
-export async function GET() {
+export async function GET(request: Request) {
+  const session = await getSession(request)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   try {
     const settings = await prisma.setting.findMany()
     const result = settings.reduce<Record<string, string>>((acc, setting) => {
@@ -23,6 +29,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsed: z.infer<typeof UpsertSettingSchema>
   try {
     const body = await req.json()

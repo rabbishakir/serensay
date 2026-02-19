@@ -69,6 +69,21 @@ function sourceLabel(source: OrderData["source"]) {
   }
 }
 
+function orderTagClass(tag: string) {
+  switch (tag) {
+    case "delay-rev":
+      return "border-amber-200 bg-amber-50 text-amber-700"
+    case "urgent":
+      return "border-red-200 bg-red-50 text-red-600"
+    case "hold":
+      return "border-slate-200 bg-slate-50 text-slate-600"
+    case "back-to-shelf":
+      return "border-blue-200 bg-blue-50 text-blue-600"
+    default:
+      return "border-[#E8C8CC] bg-[#FFF5F5] text-[#A86870]"
+  }
+}
+
 export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps) {
   const router = useRouter()
   const [rows, setRows] = useState<OrderData[]>(orders)
@@ -169,6 +184,29 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
         id: "status",
         header: "Status",
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      },
+      {
+        id: "tags",
+        header: "Tags",
+        cell: ({ row }) => {
+          const tags = row.original.tags ?? []
+          if (tags.length === 0) return null
+          return (
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <Badge
+                  key={`${row.original.id}-${tag}`}
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-xs",
+                    orderTagClass(tag)
+                  )}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )
+        },
       },
       {
         id: "sellPrice",

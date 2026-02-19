@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -63,6 +64,7 @@ export type OrderData = {
   source: SourceValue
   status: StatusValue
   batchId: string | null
+  tags: string[]
   notes: string | null
   createdAt: string
   buyer?: {
@@ -100,6 +102,7 @@ type FormState = {
   source: SourceValue
   status: StatusValue
   batchId: string
+  tags: string[]
   notes: string
 }
 
@@ -149,6 +152,7 @@ function toFormState(
       source: order.source,
       status: order.status,
       batchId: order.batchId ?? "",
+      tags: order.tags ?? [],
       notes: order.notes ?? "",
     }
   }
@@ -167,6 +171,7 @@ function toFormState(
     source,
     status: SOURCE_DEFAULT_STATUS[source],
     batchId: "",
+    tags: [],
     notes: "",
   }
 }
@@ -212,6 +217,7 @@ export default function OrderDrawer({
   const [showBuyerError, setShowBuyerError] = useState(false)
   const [showSellError, setShowSellError] = useState(false)
   const [stockIndicator, setStockIndicator] = useState<StockIndicator | null>(null)
+  const [availableTags, setAvailableTags] = useState<string[]>([])
 
   const drawerOpen = isControlled ? open : internalOpen
   const setDrawerOpen = (next: boolean) => {
@@ -241,6 +247,7 @@ export default function OrderDrawer({
     setBuyerSuggestions([])
     setProductSuggestions([])
     setBrandSuggestions([])
+    setAvailableTags([])
     setStockIndicator(null)
   }, [
     drawerOpen,
@@ -254,6 +261,28 @@ export default function OrderDrawer({
     defaultSource,
     defaultSellPrice,
   ])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+    let cancelled = false
+    const run = async () => {
+      try {
+        const res = await fetch("/api/settings/order-tags", { cache: "no-store" })
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as { tags?: string[] }
+        if (cancelled) return
+        const tags = Array.isArray(data?.tags) ? data.tags : []
+        setAvailableTags(tags)
+      } catch {
+        if (!cancelled) setAvailableTags([])
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [drawerOpen])
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -474,6 +503,7 @@ export default function OrderDrawer({
         source: form.source,
         status: form.status,
         batchId: form.batchId.trim() || undefined,
+        tags: form.tags,
         notes: form.notes.trim() || undefined,
       }
 
@@ -742,6 +772,43 @@ export default function OrderDrawer({
           placeholder="Batch ID"
           onChange={(e) => setForm((prev) => ({ ...prev, batchId: e.target.value }))}
         />
+
+        <div className="space-y-2">
+          <p className="text-xs text-[#8B6F74]">Tags</p>
+          {availableTags.length === 0 ? (
+            <p className="text-xs text-[#8B6F74]">No tags configured. Add order tags in Settings.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {availableTags.map((tag) => {
+                const selected = form.tags.includes(tag)
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        tags: prev.tags.includes(tag)
+                          ? prev.tags.filter((value) => value !== tag)
+                          : [...prev.tags, tag],
+                      }))
+                    }
+                  >
+                    <Badge
+                      variant={selected ? "default" : "outline"}
+                      className={cn(
+                        "cursor-pointer",
+                        selected ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700" : ""
+                      )}
+                    >
+                      {tag}
+                    </Badge>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         <Textarea
           rows={2}

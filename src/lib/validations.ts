@@ -20,5 +20,6 @@ export const OrderSchema = z.object({
   source: z.nativeEnum(Source),
   status: z.nativeEnum(OrderStatus).optional(),
   batchId: z.string().optional(),
+  tags: z.array(z.string().min(1).max(30)).optional(),
   notes: z.string().optional(),
 })

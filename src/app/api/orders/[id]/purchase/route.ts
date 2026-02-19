@@ -1,6 +1,7 @@
 import { OrderStatus } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+import { getSession } from "@/lib/session"
 
 import { prisma } from "@/lib/db"
 
@@ -24,6 +25,11 @@ const PurchaseSchema = z.object({
 })
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const session = await getSession(req)
+  if (!session.isLoggedIn) {
+    return Response.json({ error: "Unauthorised" }, { status: 401 })
+  }
+
   let parsedBody: z.infer<typeof PurchaseSchema>
 
   try {

@@ -1,6 +1,6 @@
 import { OrderStatus, ShipmentStatus, Source } from "@prisma/client"
 
-import { prisma } from "../src/lib/db.ts"
+import { prisma } from "../src/lib/db"
 
 async function main() {
   console.log("Seeding started...")

@@ -1,6 +1,7 @@
 "use client"
 
 import { ChevronLeft, ChevronRight, Download } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import * as XLSX from "xlsx"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
@@ -78,12 +79,55 @@ function formatUsd(value: number) {
 }
 
 export default function ReportsPage() {
+  const router = useRouter()
   const [month, setMonth] = useState(currentMonthLabel())
   const [loading, setLoading] = useState(true)
   const [report, setReport] = useState<MonthlyReport | null>(null)
   const [exchangeRate, setExchangeRate] = useState(0)
+  const [canView, setCanView] = useState<boolean | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
+    const checkAccess = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" })
+        if (!response.ok) {
+          if (!cancelled) {
+            setCanView(false)
+            router.push("/")
+          }
+          return
+        }
+
+        const data = (await response.json()) as { role: "admin" | "moderator" }
+        if (data.role !== "admin") {
+          if (!cancelled) {
+            setCanView(false)
+            router.push("/")
+          }
+          return
+        }
+
+        if (!cancelled) {
+          setCanView(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setCanView(false)
+          router.push("/")
+        }
+      }
+    }
+
+    void checkAccess()
+    return () => {
+      cancelled = true
+    }
+  }, [router])
+
+  useEffect(() => {
+    if (canView !== true) return
     let cancelled = false
 
     const run = async () => {
@@ -117,7 +161,7 @@ export default function ReportsPage() {
     return () => {
       cancelled = true
     }
-  }, [month])
+  }, [month, canView])
 
   const statusChartData = useMemo(() => {
     if (!report) return []
@@ -157,7 +201,11 @@ export default function ReportsPage() {
     XLSX.writeFile(wb, `GlamOrbit_Report_${report.month}.xlsx`)
   }
 
-  if (loading || !report) {
+  if (canView === false) {
+    return <div className="text-sm text-[#A08488]">Access denied.</div>
+  }
+
+  if (canView !== true || loading || !report) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-56" />

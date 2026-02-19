@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import ShipmentManifestExport from "@/components/shared/ShipmentManifestExport"
@@ -177,7 +177,7 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
 
   const refresh = () => window.location.reload()
 
-  const fetchBatchStockItems = async () => {
+  const fetchBatchStockItems = useCallback(async () => {
     try {
       const res = await fetch(`/api/shipments/${shipment.id}/stock`, { cache: "no-store" })
       const data = await res.json()
@@ -189,11 +189,11 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
     } catch {
       toast.error("Failed to load batch stock items.")
     }
-  }
+  }, [shipment.id])
 
   useEffect(() => {
     void fetchBatchStockItems()
-  }, [shipment.id])
+  }, [fetchBatchStockItems])
 
   useEffect(() => {
     if (!assignOpen || assignTab !== "stock") return
