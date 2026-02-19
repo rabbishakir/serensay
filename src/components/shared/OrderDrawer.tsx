@@ -502,7 +502,7 @@ export default function OrderDrawer({
           form.depositBdt.trim() === "" ? 0 : Math.max(0, Number(form.depositBdt)),
         source: form.source,
         status: form.status,
-        batchId: form.batchId.trim() || undefined,
+        batchId: mode === "add" ? null : order?.batchId ?? null,
         tags: form.tags,
         notes: form.notes.trim() || undefined,
       }
@@ -708,24 +708,38 @@ export default function OrderDrawer({
         </Select>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            type="number"
-            min={1}
-            value={form.qty}
-            placeholder="Qty"
-            onChange={(e) => setForm((prev) => ({ ...prev, qty: e.target.value }))}
-          />
-          <Input
-            type="number"
-            min={0}
-            value={form.sellPriceBdt}
-            placeholder="Sell Price BDT"
-            className={cn(showSellError ? "border-red-500 focus-visible:ring-red-500" : "")}
-            onChange={(e) => {
-              setForm((prev) => ({ ...prev, sellPriceBdt: e.target.value }))
-              if (e.target.value.trim()) setShowSellError(false)
-            }}
-          />
+          <div className="space-y-1">
+            <p className="text-xs text-[#8B6F74]">Quantity</p>
+            <Input
+              type="number"
+              min={1}
+              value={form.qty}
+              placeholder="Qty"
+              onChange={(e) => setForm((prev) => ({ ...prev, qty: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-[#8B6F74]">Sell Price (BDT)</p>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#A08488]">
+                ৳
+              </span>
+              <Input
+                type="number"
+                min={0}
+                value={form.sellPriceBdt}
+                placeholder="0"
+                className={cn(
+                  "pl-7",
+                  showSellError ? "border-red-500 focus-visible:ring-red-500" : ""
+                )}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, sellPriceBdt: e.target.value }))
+                  if (e.target.value.trim()) setShowSellError(false)
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {stockIndicator ? (
@@ -746,32 +760,52 @@ export default function OrderDrawer({
         ) : null}
 
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.buyPriceUsd}
-            placeholder="Buy Price USD"
-            onChange={(e) => setForm((prev) => ({ ...prev, buyPriceUsd: e.target.value }))}
-          />
-          <Input
-            type="number"
-            min={0}
-            value={form.depositBdt}
-            placeholder="Deposit BDT"
-            onChange={(e) => setForm((prev) => ({ ...prev, depositBdt: e.target.value }))}
-          />
+          <div className="space-y-1">
+            <p className="text-xs text-[#8B6F74]">Buy Price (USD)</p>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#A08488]">
+                $
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.buyPriceUsd}
+                placeholder="0"
+                className="pl-7"
+                onChange={(e) => setForm((prev) => ({ ...prev, buyPriceUsd: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-[#8B6F74]">Deposit Paid (BDT)</p>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#A08488]">
+                ৳
+              </span>
+              <Input
+                type="number"
+                min={0}
+                value={form.depositBdt}
+                placeholder="0"
+                className="pl-7"
+                onChange={(e) => setForm((prev) => ({ ...prev, depositBdt: e.target.value }))}
+              />
+            </div>
+          </div>
         </div>
 
-        <p className={cn("text-sm", balanceDue > 0 ? "text-amber-600" : "text-[#8B6F74]")}>
-          Balance Due: {Number.isFinite(balanceDue) ? balanceDue.toLocaleString("en-BD") : "0"} BDT
-        </p>
-
-        <Input
-          value={form.batchId}
-          placeholder="Batch ID"
-          onChange={(e) => setForm((prev) => ({ ...prev, batchId: e.target.value }))}
-        />
+        <div className="space-y-1">
+          <p className="text-xs text-[#8B6F74]">Balance Due</p>
+          <p
+            className={cn(
+              "text-sm",
+              balanceDue > 0 ? "font-semibold text-[#C4878E]" : "text-[#A08488]"
+            )}
+          >
+            ৳ {Number.isFinite(balanceDue) ? balanceDue.toLocaleString("en-BD") : "0"}
+          </p>
+        </div>
 
         <div className="space-y-2">
           <p className="text-xs text-[#8B6F74]">Tags</p>
