@@ -1,10 +1,21 @@
 "use client"
 
+import { Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import ShipmentManifestExport from "@/components/shared/ShipmentManifestExport"
 import StatusBadge from "@/components/shared/StatusBadge"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -121,10 +132,13 @@ type StockSelection = {
 }
 
 export default function ShipmentDetailClient({ shipment, purchasableOrders }: ShipmentDetailClientProps) {
+  const router = useRouter()
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignTab, setAssignTab] = useState<"orders" | "stock">("orders")
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const [stockItems, setStockItems] = useState<BatchStockItem[]>([])
   const [usaItems, setUsaItems] = useState<UsaInventoryItem[]>([])
@@ -361,6 +375,26 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
     }
   }
 
+  const deleteShipment = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/shipments/${shipment.id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data?.error ?? "Failed to delete batch.")
+        setDeleteOpen(false)
+        return
+      }
+      toast.success("Batch deleted")
+      router.push("/shipments")
+    } catch {
+      toast.error("Failed to delete batch.")
+      setDeleteOpen(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -375,6 +409,32 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
 
         <div className="flex gap-2">
           <ShipmentManifestExport shipmentId={shipment.id} shipmentName={shipment.name} />
+          <AlertDialog open={deleteOpen} onOpenChange={(open) => !deleting && setDeleteOpen(open)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:bg-red-50 hover:text-red-600"
+              onClick={() => setDeleteOpen(true)}
+              disabled={deleting}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Delete
+            </Button>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Shipment Batch?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete &apos;{shipment.name}&apos;? This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <Button variant="destructive" disabled={deleting} onClick={() => void deleteShipment()}>
+                  {deleting ? "Deleting..." : "Delete"}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {shipment.status === "PACKING" ? (
             <>
               <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
@@ -618,7 +678,7 @@ export default function ShipmentDetailClient({ shipment, purchasableOrders }: Sh
 
         {stockItems.length === 0 ? (
           <p className="text-sm text-[#8B6F74]">
-            No stock items added. Use "Assign Orders" -&gt; USA Stock tab to add items.
+            No stock items added. Use &quot;Assign Orders&quot; -&gt; USA Stock tab to add items.
           </p>
         ) : (
           <>

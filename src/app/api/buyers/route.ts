@@ -1,13 +1,24 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
 import { prisma } from "@/lib/db"
 import { BuyerSchema } from "@/lib/validations"
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const q = (req.nextUrl.searchParams.get("search") ?? "").trim()
+    const hasQuery = q.length > 0
+
     const [buyers, outstandingByBuyer] = await Promise.all([
       prisma.buyer.findMany({
+        where: hasQuery
+          ? {
+              OR: [
+                { name: { contains: q, mode: "insensitive" } },
+                { phone: { contains: q } },
+              ],
+            }
+          : undefined,
         orderBy: { name: "asc" },
         include: {
           _count: {

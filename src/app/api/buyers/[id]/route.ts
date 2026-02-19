@@ -84,38 +84,35 @@ export async function PATCH(req: Request, { params }: Params) {
 
 export async function DELETE(_req: Request, { params }: Params) {
   try {
-    const buyer = await prisma.buyer.findUnique({
-      where: { id: params.id },
-      include: {
-        _count: {
-          select: {
-            orders: true,
-          },
-        },
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const buyer = await tx.buyer.findUnique({
+        where: { id: params.id },
+        select: { id: true },
+      })
+
+      if (!buyer) {
+        return { kind: "not_found" as const }
+      }
+
+      const removedOrders = await tx.order.deleteMany({
+        where: { buyerId: buyer.id },
+      })
+
+      const deletedBuyer = await tx.buyer.delete({
+        where: { id: buyer.id },
+      })
+
+      return { kind: "deleted" as const, deletedBuyer, deletedOrders: removedOrders.count }
     })
 
-    if (!buyer) {
+    if (result.kind === "not_found") {
       return NextResponse.json({ error: "Buyer not found." }, { status: 404 })
     }
 
-    if (buyer._count.orders > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete buyer with existing orders." },
-        { status: 400 }
-      )
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to check buyer orders."
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
-
-  try {
-    const deletedBuyer = await prisma.buyer.delete({
-      where: { id: params.id },
+    return NextResponse.json({
+      ...result.deletedBuyer,
+      deletedOrders: result.deletedOrders,
     })
-
-    return NextResponse.json(deletedBuyer)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to delete buyer."
     return NextResponse.json({ error: message }, { status: 500 })

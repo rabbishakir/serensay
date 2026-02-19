@@ -47,7 +47,7 @@ export default function BuyersTable({ buyers }: BuyersTableProps) {
     () =>
       new Fuse(buyers, {
         keys: ["name", "phone"],
-        threshold: 0.35,
+        threshold: 0.3,
         ignoreLocation: true,
       }),
     [buyers]

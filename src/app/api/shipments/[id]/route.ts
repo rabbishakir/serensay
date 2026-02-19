@@ -87,34 +87,46 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } | Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params
+
     const shipment = await prisma.shipment.findUnique({
-      where: { id: params.id },
-      include: {
-        _count: {
-          select: { orders: true },
-        },
+      where: { id },
+      select: {
+        id: true,
+        status: true,
       },
     })
 
     if (!shipment) {
-      return NextResponse.json({ error: "Shipment not found." }, { status: 404 })
+      return Response.json({ error: "Not found" }, { status: 404 })
     }
 
-    if (shipment._count.orders > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete shipment with assigned orders." },
-        { status: 400 }
-      )
-    }
+    await prisma.$transaction(async (tx) => {
+      if (shipment.status === "IN_TRANSIT") {
+        await tx.order.updateMany({
+          where: { batchId: id },
+          data: { batchId: null, status: "PURCHASED" },
+        })
+      } else {
+        await tx.order.updateMany({
+          where: { batchId: id },
+          data: { batchId: null },
+        })
+      }
 
-    const deleted = await prisma.shipment.delete({
-      where: { id: params.id },
+      await tx.shipment.delete({
+        where: { id },
+      })
     })
-    return NextResponse.json(deleted)
+
+    return Response.json({ deleted: true })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to delete shipment."
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error("Delete shipment error:", error)
+    return Response.json({ error: "Failed to delete shipment" }, { status: 500 })
   }
 }

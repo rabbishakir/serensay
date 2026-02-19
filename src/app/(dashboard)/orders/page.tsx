@@ -40,6 +40,7 @@ type OrdersResponse = {
 type BuyerOption = {
   id: string
   name: string
+  phone: string | null
 }
 
 function formatRangeLabel(range: DateRange | undefined) {
@@ -70,8 +71,9 @@ function OrdersPageContent() {
   const buyerFuse = useMemo(
     () =>
       new Fuse(buyerOptions, {
-        keys: ["name"],
+        keys: ["name", "phone"],
         threshold: 0.3,
+        ignoreLocation: true,
       }),
     [buyerOptions]
   )
@@ -86,6 +88,11 @@ function OrdersPageContent() {
     if (!selectedBuyerId) return ""
     return buyerOptions.find((buyer) => buyer.id === selectedBuyerId)?.name ?? buyerSearch
   }, [buyerOptions, selectedBuyerId, buyerSearch])
+
+  const selectedBuyerPhone = useMemo(() => {
+    if (!selectedBuyerId) return null
+    return buyerOptions.find((buyer) => buyer.id === selectedBuyerId)?.phone ?? null
+  }, [buyerOptions, selectedBuyerId])
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -230,7 +237,10 @@ function OrdersPageContent() {
                     setBuyerDropdownOpen(false)
                   }}
                 >
-                  {buyer.name}
+                  <span>{buyer.name}</span>
+                  {buyer.phone ? (
+                    <span className="ml-2 text-xs text-[#8B6F74]">· {buyer.phone}</span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -288,6 +298,9 @@ function OrdersPageContent() {
           {selectedBuyerId ? (
             <Badge variant="outline" className="gap-1">
               Buyer: {selectedBuyerName}
+              {selectedBuyerPhone ? (
+                <span className="text-xs text-[#8B6F74]">· {selectedBuyerPhone}</span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {

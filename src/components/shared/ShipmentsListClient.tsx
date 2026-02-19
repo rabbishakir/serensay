@@ -1,9 +1,19 @@
 "use client"
 
 import Link from "next/link"
+import { Trash2 } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -54,6 +64,8 @@ export default function ShipmentsListClient({ initialShipments }: { initialShipm
   const [departureDate, setDepartureDate] = useState("")
   const [notes, setNotes] = useState("")
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ShipmentCard | null>(null)
   const [showNameError, setShowNameError] = useState(false)
 
   const createShipment = async () => {
@@ -94,6 +106,33 @@ export default function ShipmentsListClient({ initialShipments }: { initialShipm
       toast.error("Failed to create batch.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const deleteShipment = async () => {
+    if (!deleteTarget) return
+
+    const targetId = deleteTarget.id
+    setDeletingId(targetId)
+    try {
+      const res = await fetch(`/api/shipments/${targetId}`, {
+        method: "DELETE",
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data?.error ?? "Failed to delete batch.")
+        setDeleteTarget(null)
+        return
+      }
+
+      setShipments((prev) => prev.filter((item) => item.id !== targetId))
+      toast.success("Batch deleted")
+      setDeleteTarget(null)
+    } catch {
+      toast.error("Failed to delete batch.")
+      setDeleteTarget(null)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -156,13 +195,49 @@ export default function ShipmentsListClient({ initialShipments }: { initialShipm
             <CardContent className="space-y-2 text-sm text-[#5D4548]">
               <p>Departure: {formatDate(shipment.departureDate)}</p>
               <p>Orders: {shipment._count.orders}</p>
-              <Button asChild size="sm" variant="outline">
-                <Link href={`/shipments/${shipment.id}`}>View</Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/shipments/${shipment.id}`}>View</Link>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-400 hover:bg-red-50 hover:text-red-600"
+                  disabled={deletingId === shipment.id}
+                  onClick={() => setDeleteTarget(shipment)}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  {deletingId === shipment.id ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(openState) => !openState && !deletingId && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Shipment Batch?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &apos;{deleteTarget?.name}&apos;? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={!!deletingId}
+              onClick={() => void deleteShipment()}
+            >
+              {deletingId ? "Deleting..." : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

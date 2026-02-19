@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       ? {
           OR: [
             { name: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q, mode: "insensitive" } },
+            { phone: { contains: q } },
           ],
         }
       : undefined,

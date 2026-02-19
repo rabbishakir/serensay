@@ -36,6 +36,7 @@ type StatusValue =
 type BuyerSuggestion = {
   id: string
   name: string
+  phone: string | null
 }
 
 type InventoryLookupItem = {
@@ -332,13 +333,17 @@ export default function OrderDrawer({
           cache: "no-store",
         })
         if (!res.ok || cancelled) return
-        const data = (await res.json()) as Array<{ id: string; name: string }>
+        const data = (await res.json()) as Array<{ id: string; name: string; phone: string | null }>
         if (cancelled) return
         const normalized = term.toLowerCase()
         const filtered = data
-          .filter((b) => b.name.toLowerCase().includes(normalized))
+          .filter(
+            (b) =>
+              b.name.toLowerCase().includes(normalized) ||
+              (b.phone ? b.phone.includes(term.trim()) : false)
+          )
           .slice(0, 8)
-          .map((b) => ({ id: b.id, name: b.name }))
+          .map((b) => ({ id: b.id, name: b.name, phone: b.phone }))
         setBuyerSuggestions(filtered)
       } catch {
         if (!cancelled) setBuyerSuggestions([])
@@ -549,7 +554,7 @@ export default function OrderDrawer({
                 <button
                   key={b.id}
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FAFAFA]"
+                  className="block w-full px-3 py-2 text-left hover:bg-[#FAFAFA]"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setForm((prev) => ({
@@ -562,7 +567,10 @@ export default function OrderDrawer({
                     setShowBuyerError(false)
                   }}
                 >
-                  {b.name}
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm">{b.name}</span>
+                    {b.phone ? <span className="text-xs text-[#8B6F74]">{b.phone}</span> : null}
+                  </div>
                 </button>
               ))}
             </div>

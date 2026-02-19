@@ -170,6 +170,7 @@ export default function GlobalSearch() {
       new Fuse(buyers, {
         keys: ["name", "phone"],
         threshold: 0.3,
+        ignoreLocation: true,
       }),
     [buyers]
   )
