@@ -300,7 +300,7 @@ export default function GlobalSearch() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
+                  className="border-[#E8C8CC] text-[#BA4E5A] hover:bg-[#FCEEF0]"
                   onClick={() => {
                     setOpen(false)
                     setPrefilledProduct(null)
@@ -349,7 +349,7 @@ export default function GlobalSearch() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
+                        className="h-7 border-[#E8C8CC] text-[#BA4E5A] hover:bg-[#FCEEF0]"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -407,7 +407,7 @@ export default function GlobalSearch() {
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
+                        className="h-7 border-[#E8C8CC] text-[#BA4E5A] hover:bg-[#FCEEF0]"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={(e) => {
                           e.stopPropagation()

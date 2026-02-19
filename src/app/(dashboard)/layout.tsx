@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <p className="mt-3 text-center text-sm font-bold tracking-[0.2em] text-[#1E1215]">
               SERENE SAY
             </p>
-            <p className="mt-1 text-center text-xs uppercase tracking-[0.25em] text-[#C4878E]">
+            <p className="mt-1 text-center text-xs uppercase tracking-[0.25em] text-[#BA4E5A]">
               BEAUTY PRODUCTS
             </p>
             <div className="mx-4 mb-2 mt-4 border-b border-[#E8C8CC]" />
@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   className={[
                     "block rounded-lg border-l-2 px-3 py-2 text-sm transition-colors",
                     active
-                      ? "border-[#C4878E] bg-[#FCEEF0] font-semibold text-[#C4878E]"
+                      ? "border-[#C4878E] bg-[#FCEEF0] font-semibold text-[#BA4E5A]"
                       : "border-transparent text-[#8B6F74] hover:bg-[#FCEEF0] hover:text-[#1E1215]",
                   ].join(" ")}
                 >
@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="p-4">
             <Link
               href="/orders?new=true"
-              className="block w-full rounded-lg bg-[#C4878E] px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-[#A86870]"
+              className="block w-full rounded-lg bg-[#973559e6] px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-[#A86870]"
             >
               + New Order
             </Link>

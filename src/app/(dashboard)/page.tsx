@@ -101,7 +101,7 @@ export default async function DashboardPage() {
           <CardContent>
             <p
               className={`text-3xl font-bold ${
-                stats.outstandingBalance > 0 ? "text-[#C4878E]" : "text-[#1E1215]"
+                stats.outstandingBalance > 0 ? "text-[#BA4E5A]" : "text-[#1E1215]"
               }`}
             >
               {formatBdt(stats.outstandingBalance)}

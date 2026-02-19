@@ -73,7 +73,7 @@ export default function DashboardActionNeededTable({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
+                          className="border-[#E8C8CC] text-[#BA4E5A] hover:bg-[#FCEEF0]"
                           onClick={() => setBuyingOrder(order)}
                         >
                           Mark Bought

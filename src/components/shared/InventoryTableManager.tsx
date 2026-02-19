@@ -21,6 +21,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table,
   TableBody,
@@ -29,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
 
 type InventoryItem = BdInventoryItem | UsaInventoryItem
 
@@ -64,6 +67,12 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
   const [moveDialogItem, setMoveDialogItem] = useState<UsaInventoryItem | null>(null)
   const [moveQty, setMoveQty] = useState("1")
   const [movingToBd, setMovingToBd] = useState(false)
+  const [productFilter, setProductFilter] = useState("")
+  const [brandFilter, setBrandFilter] = useState("")
+  const [shadeFilter, setShadeFilter] = useState("")
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [brandDropdownOpen, setBrandDropdownOpen] = useState(false)
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false)
 
   const endpoint = `/api/inventory/${type}`
 
@@ -160,6 +169,70 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
     [items]
   )
 
+  const distinctBrands = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          items
+            .map((item) => item.brand?.trim())
+            .filter((brand): brand is string => !!brand)
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [items]
+  )
+
+  const brandSuggestions = useMemo(() => {
+    const term = brandFilter.trim().toLowerCase()
+    if (!term) return distinctBrands
+    return distinctBrands.filter((brand) => brand.toLowerCase().includes(term))
+  }, [brandFilter, distinctBrands])
+
+  const distinctTags = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          items.flatMap((item) => item.tags.map((tag) => tag.trim())).filter((tag) => tag.length > 0)
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [items]
+  )
+
+  const filteredItems = useMemo(() => {
+    const productTerm = productFilter.trim().toLowerCase()
+    const brandTerm = brandFilter.trim().toLowerCase()
+    const shadeTerm = shadeFilter.trim().toLowerCase()
+
+    return items.filter((item) => {
+      const productMatch =
+        !productTerm || item.productName.toLowerCase().includes(productTerm)
+      const brandMatch =
+        !brandTerm || (item.brand ?? "").toLowerCase().includes(brandTerm)
+      const shadeMatch =
+        !shadeTerm || (item.shade ?? "").toLowerCase().includes(shadeTerm)
+      const tagMatch =
+        selectedTags.length === 0 || item.tags.some((tag) => selectedTags.includes(tag))
+      return productMatch && brandMatch && shadeMatch && tagMatch
+    })
+  }, [items, productFilter, brandFilter, shadeFilter, selectedTags])
+
+  const filteredSorted = useMemo(
+    () => [...filteredItems].sort((a, b) => a.productName.localeCompare(b.productName)),
+    [filteredItems]
+  )
+
+  const hasActiveFilters =
+    productFilter.trim().length > 0 ||
+    brandFilter.trim().length > 0 ||
+    shadeFilter.trim().length > 0 ||
+    selectedTags.length > 0
+
+  const clearAllFilters = () => {
+    setProductFilter("")
+    setBrandFilter("")
+    setShadeFilter("")
+    setSelectedTags([])
+  }
+
   const onMoveToBd = async () => {
     if (!moveDialogItem) return
     const qty = Number(moveQty)
@@ -193,6 +266,150 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <div className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_auto_auto]">
+          <Input
+            placeholder="Product name..."
+            value={productFilter}
+            onChange={(e) => setProductFilter(e.target.value)}
+          />
+
+          <div className="relative">
+            <Input
+              placeholder="Brand..."
+              value={brandFilter}
+              onFocus={() => setBrandDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setBrandDropdownOpen(false), 120)}
+              onChange={(e) => {
+                setBrandFilter(e.target.value)
+                setBrandDropdownOpen(true)
+              }}
+            />
+            {brandDropdownOpen && brandSuggestions.length > 0 ? (
+              <div className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-md border bg-white shadow">
+                {brandSuggestions.map((brand) => (
+                  <button
+                    key={brand}
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FCEEF0]"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setBrandFilter(brand)
+                      setBrandDropdownOpen(false)
+                    }}
+                  >
+                    {brand}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <Input
+            placeholder="Shade..."
+            value={shadeFilter}
+            onChange={(e) => setShadeFilter(e.target.value)}
+          />
+
+          <Popover open={tagDropdownOpen} onOpenChange={setTagDropdownOpen}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" className="justify-between">
+                <span>{selectedTags.length > 0 ? `Tags (${selectedTags.length})` : "Filter by tag..."}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="start">
+              {distinctTags.length === 0 ? (
+                <p className="px-2 py-1 text-sm text-[#8B6F74]">No tags available.</p>
+              ) : (
+                <div className="space-y-1">
+                  {distinctTags.map((tag) => {
+                    const checked = selectedTags.includes(tag)
+                    return (
+                      <label key={tag} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-[#FCEEF0]">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(next) => {
+                            const shouldCheck = next === true
+                            setSelectedTags((prev) =>
+                              shouldCheck
+                                ? Array.from(new Set([...prev, tag]))
+                                : prev.filter((value) => value !== tag)
+                            )
+                          }}
+                        />
+                        <span>{tag}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              className="justify-self-start text-sm text-[#8B6F74] underline hover:text-[#5D4548]"
+              onClick={clearAllFilters}
+            >
+              Clear filters
+            </button>
+          ) : (
+            <div />
+          )}
+        </div>
+
+        {hasActiveFilters ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {productFilter.trim() ? (
+              <Badge variant="outline" className="gap-1">
+                Product: {productFilter.trim()}
+                <button type="button" onClick={() => setProductFilter("")} aria-label="Clear product filter">
+                  x
+                </button>
+              </Badge>
+            ) : null}
+            {brandFilter.trim() ? (
+              <Badge variant="outline" className="gap-1">
+                Brand: {brandFilter.trim()}
+                <button type="button" onClick={() => setBrandFilter("")} aria-label="Clear brand filter">
+                  x
+                </button>
+              </Badge>
+            ) : null}
+            {shadeFilter.trim() ? (
+              <Badge variant="outline" className="gap-1">
+                Shade: {shadeFilter.trim()}
+                <button type="button" onClick={() => setShadeFilter("")} aria-label="Clear shade filter">
+                  x
+                </button>
+              </Badge>
+            ) : null}
+            {selectedTags.length > 0 ? (
+              <Badge variant="outline" className="gap-1">
+                Tags: {selectedTags.join(", ")}
+                <button type="button" onClick={() => setSelectedTags([])} aria-label="Clear tags filter">
+                  x
+                </button>
+              </Badge>
+            ) : null}
+            <button
+              type="button"
+              className="text-sm text-[#8B6F74] underline hover:text-[#5D4548]"
+              onClick={clearAllFilters}
+            >
+              Clear all
+            </button>
+          </div>
+        ) : null}
+
+        {hasActiveFilters ? (
+          <p className="text-sm text-[#8B6F74]">
+            Showing {filteredSorted.length} of {items.length} items
+          </p>
+        ) : null}
+      </div>
+
       <div className="flex items-center justify-end gap-2">
         <Button variant="outline" onClick={onExport}>
           <Download className="mr-2 h-4 w-4" />
@@ -231,7 +448,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.length === 0 ? (
+            {filteredSorted.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={10}
@@ -241,7 +458,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((item) => {
+              filteredSorted.map((item) => {
                 const lowStock = item.qty < 2
                 return (
                   <TableRow key={item.id}>

@@ -20,8 +20,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
           select: {
             id: true,
             productName: true,
+            brand: true,
+            shade: true,
+            qty: true,
+            buyPriceUsd: true,
+            depositBdt: true,
             status: true,
             sellPriceBdt: true,
+            source: true,
+            createdAt: true,
             buyer: {
               select: { name: true },
             },

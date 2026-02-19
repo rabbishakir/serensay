@@ -149,7 +149,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
           <span
             className={cn(
               "inline-block w-[60px]",
-              row.original.qty > 1 ? "font-semibold text-[#C4878E]" : "text-[#8B6F74]"
+              row.original.qty > 1 ? "font-semibold text-[#BA4E5A]" : "text-[#8B6F74]"
             )}
           >
             {row.original.qty}
@@ -186,7 +186,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
         cell: ({ row }) => {
           const balance = row.original.sellPriceBdt - row.original.depositBdt
           return (
-            <span className={cn(balance > 0 ? "font-medium text-[#C4878E]" : "text-[#8B6F74]")}>
+            <span className={cn(balance > 0 ? "font-medium text-[#BA4E5A]" : "text-[#8B6F74]")}>
               {formatBdt(balance)}
             </span>
           )
@@ -204,7 +204,7 @@ export default function OrdersTable({ orders, refetchOrders }: OrdersTableProps)
               <Button
                 size="sm"
                 variant="outline"
-                className="border-[#E8C8CC] text-[#C4878E] hover:bg-[#FCEEF0]"
+                className="border-[#E8C8CC] text-[#BA4E5A] hover:bg-[#FCEEF0]"
                 onClick={() => setBuyingOrder(row.original)}
               >
                 Mark Bought

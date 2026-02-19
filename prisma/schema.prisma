@@ -87,6 +87,7 @@ model Shipment {
   departureDate  DateTime?
   arrivalDate    DateTime?
   status         ShipmentStatus @default(PACKING)
+  stockItems     Json           @default("[]")
   notes          String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
