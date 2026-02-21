@@ -14,17 +14,27 @@ export async function GET(req: NextRequest) {
   try {
     const q = (req.nextUrl.searchParams.get("search") ?? "").trim()
     const hasQuery = q.length > 0
+    const isPhoneSearch = /^[\d\s+()-]+$/.test(q.trim())
+    const normalizedPhoneQuery = q.replace(/\s+/g, "")
+
+    const where = hasQuery
+      ? isPhoneSearch
+        ? {
+            phone: {
+              contains: normalizedPhoneQuery,
+            },
+          }
+        : {
+            OR: [
+              { name: { contains: q, mode: "insensitive" as const } },
+              { phone: { contains: q } },
+            ],
+          }
+      : undefined
 
     const [buyers, outstandingByBuyer] = await Promise.all([
       prisma.buyer.findMany({
-        where: hasQuery
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { phone: { contains: q } },
-              ],
-            }
-          : undefined,
+        where,
         orderBy: { name: "asc" },
         include: {
           _count: {

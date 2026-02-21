@@ -74,7 +74,7 @@ function OrdersPageContent() {
   const buyerFuse = useMemo(
     () =>
       new Fuse(buyerOptions, {
-        keys: ["name", "phone"],
+        keys: ["name"],
         threshold: 0.3,
         ignoreLocation: true,
       }),
@@ -84,6 +84,13 @@ function OrdersPageContent() {
   const filteredBuyerOptions = useMemo(() => {
     const term = buyerSearch.trim()
     if (!term) return buyerOptions.slice(0, 8)
+    const isPhoneSearch = /^[\d\s+()-]+$/.test(term)
+    if (isPhoneSearch) {
+      const digits = term.replace(/\s+/g, "")
+      return buyerOptions
+        .filter((buyer) => buyer.phone && buyer.phone.includes(digits))
+        .slice(0, 8)
+    }
     return buyerFuse.search(term, { limit: 8 }).map((result) => result.item)
   }, [buyerFuse, buyerOptions, buyerSearch])
 

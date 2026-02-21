@@ -11,16 +11,26 @@ export async function GET(req: NextRequest) {
 
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim()
   const hasQuery = q.length > 0
+  const isPhoneSearch = /^[\d\s+()-]+$/.test(q.trim())
+  const normalizedPhoneQuery = q.replace(/\s+/g, "")
 
-  const buyers = await prisma.buyer.findMany({
-    where: hasQuery
+  const buyerWhere = hasQuery
+    ? isPhoneSearch
       ? {
+          phone: {
+            contains: normalizedPhoneQuery,
+          },
+        }
+      : {
           OR: [
-            { name: { contains: q, mode: "insensitive" } },
+            { name: { contains: q, mode: "insensitive" as const } },
             { phone: { contains: q } },
           ],
         }
-      : undefined,
+    : undefined
+
+  const buyers = await prisma.buyer.findMany({
+    where: buyerWhere,
     select: {
       id: true,
       name: true,

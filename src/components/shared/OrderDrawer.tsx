@@ -364,12 +364,15 @@ export default function OrderDrawer({
         if (!res.ok || cancelled) return
         const data = (await res.json()) as Array<{ id: string; name: string; phone: string | null }>
         if (cancelled) return
+        const isPhoneSearch = /^[\d\s+()-]+$/.test(term)
         const normalized = term.toLowerCase()
+        const digits = term.replace(/\s+/g, "")
         const filtered = data
           .filter(
             (b) =>
-              b.name.toLowerCase().includes(normalized) ||
-              (b.phone ? b.phone.includes(term.trim()) : false)
+              isPhoneSearch
+                ? (b.phone ? b.phone.includes(digits) : false)
+                : b.name.toLowerCase().includes(normalized)
           )
           .slice(0, 8)
           .map((b) => ({ id: b.id, name: b.name, phone: b.phone }))

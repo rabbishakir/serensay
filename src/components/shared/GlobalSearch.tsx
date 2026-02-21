@@ -168,7 +168,7 @@ export default function GlobalSearch() {
   const buyerFuse = useMemo(
     () =>
       new Fuse(buyers, {
-        keys: ["name", "phone"],
+        keys: ["name"],
         threshold: 0.3,
         ignoreLocation: true,
       }),
@@ -212,8 +212,14 @@ export default function GlobalSearch() {
       return
     }
 
+    const isPhoneSearch = /^[\d\s+()-]+$/.test(term)
+    const phoneDigits = term.replace(/\s+/g, "")
+    const localBuyerResults = isPhoneSearch
+      ? buyers.filter((buyer) => buyer.phone && buyer.phone.includes(phoneDigits)).slice(0, 10)
+      : buyerFuse.search(term, { limit: 10 }).map((r) => r.item)
+
     const localResults = {
-      buyers: buyerFuse.search(term, { limit: 10 }).map((r) => r.item),
+      buyers: localBuyerResults,
       orders: orderFuse.search(term, { limit: 10 }).map((r) => r.item),
       bdInventory: bdInventoryFuse.search(term, { limit: 10 }).map((r) => r.item),
       usaInventory: usaInventoryFuse.search(term, { limit: 10 }).map((r) => r.item),
@@ -258,7 +264,7 @@ export default function GlobalSearch() {
     return () => {
       cancelled = true
     }
-  }, [open, query, buyerFuse, orderFuse, bdInventoryFuse, usaInventoryFuse])
+  }, [open, query, buyers, buyerFuse, orderFuse, bdInventoryFuse, usaInventoryFuse])
 
   const normalizedQuery = query.trim()
 

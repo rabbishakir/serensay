@@ -46,7 +46,7 @@ export default function BuyersTable({ buyers }: BuyersTableProps) {
   const fuse = useMemo(
     () =>
       new Fuse(buyers, {
-        keys: ["name", "phone"],
+        keys: ["name"],
         threshold: 0.3,
         ignoreLocation: true,
       }),
@@ -56,6 +56,11 @@ export default function BuyersTable({ buyers }: BuyersTableProps) {
   const filteredBuyers = useMemo(() => {
     const term = query.trim()
     if (!term) return buyers
+    const isPhoneSearch = /^[\d\s+()-]+$/.test(term)
+    if (isPhoneSearch) {
+      const digits = term.replace(/\s+/g, "")
+      return buyers.filter((buyer) => buyer.phone && buyer.phone.includes(digits))
+    }
     return fuse.search(term).map((result) => result.item)
   }, [buyers, fuse, query])
 
