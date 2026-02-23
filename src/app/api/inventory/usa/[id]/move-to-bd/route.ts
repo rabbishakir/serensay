@@ -57,7 +57,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       if (existingBd) {
         const bdItem = await tx.bdInventory.update({
           where: { id: existingBd.id },
-          data: { qty: existingBd.qty + parsed.qty },
+          data: {
+            qty: existingBd.qty + parsed.qty,
+            images: existingBd.images?.length ? existingBd.images : usaItem.images ?? [],
+          },
         })
         return bdItem
       }
@@ -68,6 +71,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           brand: usaItem.brand,
           shade: usaItem.shade,
           tags: usaItem.tags,
+          images: usaItem.images ?? [],
           qty: parsed.qty,
           buyPriceBdt: null,
         },

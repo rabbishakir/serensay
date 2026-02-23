@@ -9,6 +9,7 @@ const BdInventorySchema = z.object({
   brand: z.string().optional(),
   shade: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  images: z.array(z.string().min(1)).max(3).optional(),
   qty: z.number().int().optional(),
   buyPriceBdt: z.number().optional(),
   sellPriceBdt: z.number().optional(),
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
       data: {
         ...parsed,
         tags: parsed.tags ?? [],
+        images: parsed.images ?? [],
       },
     })
     return NextResponse.json(created, { status: 201 })

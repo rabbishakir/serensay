@@ -62,6 +62,7 @@ model BdInventory {
   brand        String?
   shade        String?
   tags         String[] @default([])
+  images       String[] @default([])
   qty          Int      @default(0)
   buyPriceBdt  Float?
   sellPriceBdt Float?
@@ -75,6 +76,7 @@ model UsaInventory {
   brand       String?
   shade       String?
   tags        String[] @default([])
+  images      String[] @default([])
   qty         Int      @default(0)
   buyPriceUsd Float?
   weightG     Float?

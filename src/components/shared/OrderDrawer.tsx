@@ -505,7 +505,7 @@ export default function OrderDrawer({
           form.depositBdt.trim() === "" ? 0 : Math.max(0, Number(form.depositBdt)),
         source: form.source,
         status: form.status,
-        batchId: mode === "add" ? null : order?.batchId ?? null,
+        batchId: mode === "add" ? undefined : form.batchId.trim() || undefined,
         tags: form.tags,
         notes: form.notes.trim() || undefined,
       }

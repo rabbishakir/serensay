@@ -1,10 +1,12 @@
 "use client"
+/* eslint-disable @next/next/no-img-element */
 
-import { Download } from "lucide-react"
+import { Download, ImageIcon } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import * as XLSX from "xlsx"
 
+import ImageLightbox from "@/components/shared/ImageLightbox"
 import InventoryDrawer, {
   type BdInventoryItem,
   type InventoryType,
@@ -58,6 +60,49 @@ function formatCurrency(value: number | null | undefined, currency: "BDT" | "USD
   }).format(value)
 }
 
+function InventoryImageThumb({
+  item,
+  onOpen,
+}: {
+  item: InventoryItem
+  onOpen: (item: InventoryItem) => void
+}) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const hasImages = Array.isArray(item.images) && item.images.length > 0
+  const firstImage = hasImages ? item.images[0] : ""
+
+  if (!hasImages) {
+    return (
+      <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-[#EDE0E2] bg-[#F7F3F4]">
+        <ImageIcon className="h-5 w-5 text-[#A08488]" />
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className="flex h-14 w-14 items-center justify-center rounded-lg border border-[#EDE0E2] bg-[#F7F3F4] transition-opacity hover:opacity-80"
+      onClick={() => onOpen(item)}
+    >
+      {imageFailed ? (
+        <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-[#EDE0E2] bg-[#F7F3F4]">
+          <ImageIcon className="h-5 w-5 text-[#A08488]" />
+        </div>
+      ) : (
+        <img
+          src={firstImage}
+          alt={item.productName}
+          width={56}
+          height={56}
+          className="h-14 w-14 rounded-lg object-cover"
+          onError={() => setImageFailed(true)}
+        />
+      )}
+    </button>
+  )
+}
+
 export default function InventoryTableManager({ type, initialItems }: InventoryTableManagerProps) {
   const [items, setItems] = useState<InventoryItem[]>(initialItems)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
@@ -72,6 +117,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false)
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false)
+  const [lightboxItem, setLightboxItem] = useState<InventoryItem | null>(null)
 
   const endpoint = `/api/inventory/${type}`
 
@@ -421,6 +467,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Image</TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Brand</TableHead>
               <TableHead>Shade</TableHead>
@@ -445,7 +492,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
             {filteredSorted.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={10}
+                  colSpan={11}
                   className="h-24 text-center text-[#8B6F74]"
                 >
                   No items found.
@@ -456,6 +503,9 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
                 const lowStock = item.qty < 2
                 return (
                   <TableRow key={item.id}>
+                    <TableCell>
+                      <InventoryImageThumb item={item} onOpen={setLightboxItem} />
+                    </TableCell>
                     <TableCell>{item.productName}</TableCell>
                     <TableCell>{item.brand || "-"}</TableCell>
                     <TableCell>{item.shade || "-"}</TableCell>
@@ -566,6 +616,15 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
           </TableBody>
         </Table>
       </div>
+
+      <ImageLightbox
+        images={lightboxItem?.images || []}
+        productName={lightboxItem?.productName || ""}
+        open={lightboxItem !== null}
+        onOpenChange={(open) => {
+          if (!open) setLightboxItem(null)
+        }}
+      />
 
       {editingItem ? (
         <InventoryDrawer

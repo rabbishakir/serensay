@@ -1,8 +1,11 @@
 "use client"
+/* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { Loader2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
+import ImageLightbox from "@/components/shared/ImageLightbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -25,6 +28,7 @@ export type BdInventoryItem = {
   brand: string | null
   shade: string | null
   tags: string[]
+  images: string[]
   qty: number
   buyPriceBdt: number | null
   sellPriceBdt: number | null
@@ -37,6 +41,7 @@ export type UsaInventoryItem = {
   brand: string | null
   shade: string | null
   tags: string[]
+  images: string[]
   qty: number
   buyPriceUsd: number | null
   weightG: number | null
@@ -62,6 +67,21 @@ type FormState = {
   sellPriceBdt: string
   buyPriceUsd: string
   weightG: string
+}
+
+type ScanResult = {
+  name: string
+  brand: string
+  shade: string
+  description: string
+  weightG: number | null
+  dimension: string
+  images: string[]
+  lowestPrice: number | null
+  stores: Array<{
+    name: string
+    price: number | null
+  }>
 }
 
 function toFormState(type: InventoryType, item?: BdInventoryItem | UsaInventoryItem): FormState {
@@ -121,8 +141,32 @@ export default function InventoryDrawer({
   const [productSuggestions, setProductSuggestions] = useState<string[]>([])
   const [availableTags, setAvailableTags] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [images, setImages] = useState<string[]>([])
+  const [imageUrlDraft, setImageUrlDraft] = useState("")
   const [productFocused, setProductFocused] = useState(false)
   const [showProductError, setShowProductError] = useState(false)
+  const [upcInput, setUpcInput] = useState("")
+  const [scanning, setScanning] = useState(false)
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
+  const [scanError, setScanError] = useState("")
+  const [drawerLightboxOpen, setDrawerLightboxOpen] = useState(false)
+  const [drawerLightboxIndex, setDrawerLightboxIndex] = useState(0)
+  const [autoFilledFields, setAutoFilledFields] = useState<{
+    productName: boolean
+    brand: boolean
+    shade: boolean
+    weightG: boolean
+    images: boolean
+  }>({
+    productName: false,
+    brand: false,
+    shade: false,
+    weightG: false,
+    images: false,
+  })
+
+  const upcInputRef = useRef<HTMLInputElement | null>(null)
+  const productNameRef = useRef<HTMLInputElement | null>(null)
 
   const drawerOpen = isControlled ? !!open : internalOpen
 
@@ -135,8 +179,29 @@ export default function InventoryDrawer({
     if (!drawerOpen) return
     setForm(toFormState(type, item))
     setSelectedTags(item?.tags ?? [])
+    setImages(item?.images ?? [])
+    setImageUrlDraft("")
+    setUpcInput("")
+    setScanning(false)
+    setScanResult(null)
+    setScanError("")
+    setAutoFilledFields({
+      productName: false,
+      brand: false,
+      shade: false,
+      weightG: false,
+      images: false,
+    })
     setShowProductError(false)
   }, [drawerOpen, type, item])
+
+  useEffect(() => {
+    if (!drawerOpen || mode !== "add") return
+    const timer = setTimeout(() => {
+      upcInputRef.current?.focus()
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [drawerOpen, mode])
 
   useEffect(() => {
     if (!drawerOpen) return
@@ -196,6 +261,115 @@ export default function InventoryDrawer({
     [mode, type]
   )
 
+  const autoFillFromScan = (product: ScanResult) => {
+    const nextAutoFilled = {
+      productName: false,
+      brand: false,
+      shade: false,
+      weightG: false,
+      images: false,
+    }
+
+    setForm((prev) => {
+      const next = { ...prev }
+
+      if (!prev.productName.trim() && product.name.trim()) {
+        next.productName = product.name.trim()
+        nextAutoFilled.productName = true
+      }
+      if (!prev.brand.trim() && product.brand.trim()) {
+        next.brand = product.brand.trim()
+        nextAutoFilled.brand = true
+      }
+      if (!prev.shade.trim() && product.shade.trim()) {
+        next.shade = product.shade.trim()
+        nextAutoFilled.shade = true
+      }
+      if (type === "usa" && !prev.weightG.trim() && product.weightG != null) {
+        next.weightG = String(product.weightG)
+        nextAutoFilled.weightG = true
+      }
+
+      return next
+    })
+
+    setImages((prev) => {
+      if (prev.length > 0) return prev
+      if (product.images.length === 0) return prev
+      nextAutoFilled.images = true
+      return product.images.slice(0, 3)
+    })
+
+    setAutoFilledFields(nextAutoFilled)
+
+    setTimeout(() => {
+      productNameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 120)
+  }
+
+  const runUpcScan = async () => {
+    const raw = upcInput.trim()
+    if (!raw || scanning) return
+    setScanning(true)
+    setScanError("")
+    setScanResult(null)
+
+    try {
+      const res = await fetch(`/api/upc?upc=${encodeURIComponent(raw)}`, { cache: "no-store" })
+      const data = await res.json()
+
+      if (!res.ok || !data?.found) {
+        setScanError(data?.error || "Product not found. Fill in details manually.")
+        return
+      }
+
+      const product = data.product as ScanResult
+      setScanResult(product)
+      autoFillFromScan(product)
+    } catch {
+      setScanError("UPC lookup failed")
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const clearScan = () => {
+    setUpcInput("")
+    setScanResult(null)
+    setScanError("")
+    setScanning(false)
+
+    setForm((prev) => ({
+      ...prev,
+      productName: autoFilledFields.productName ? "" : prev.productName,
+      brand: autoFilledFields.brand ? "" : prev.brand,
+      shade: autoFilledFields.shade ? "" : prev.shade,
+      weightG: autoFilledFields.weightG ? "" : prev.weightG,
+    }))
+    if (autoFilledFields.images) {
+      setImages([])
+    }
+    setAutoFilledFields({
+      productName: false,
+      brand: false,
+      shade: false,
+      weightG: false,
+      images: false,
+    })
+  }
+
+  const addImageFromDraft = () => {
+    const next = imageUrlDraft.trim()
+    if (!next) return
+    if (images.includes(next)) {
+      setImageUrlDraft("")
+      return
+    }
+    if (images.length >= 3) return
+    setImages((prev) => [...prev, next].slice(0, 3))
+    setImageUrlDraft("")
+  }
+
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const productName = form.productName.trim()
@@ -214,6 +388,7 @@ export default function InventoryDrawer({
               shade: form.shade.trim() || undefined,
               qty: Number(form.qty || 0),
               tags: selectedTags,
+              images,
               buyPriceBdt: form.buyPriceBdt.trim() ? Number(form.buyPriceBdt) : undefined,
               sellPriceBdt: form.sellPriceBdt.trim() ? Number(form.sellPriceBdt) : undefined,
             }
@@ -223,6 +398,7 @@ export default function InventoryDrawer({
               shade: form.shade.trim() || undefined,
               qty: Number(form.qty || 0),
               tags: selectedTags,
+              images,
               buyPriceUsd: form.buyPriceUsd.trim() ? Number(form.buyPriceUsd) : undefined,
               weightG: form.weightG.trim() ? Number(form.weightG) : undefined,
             }
@@ -259,57 +435,163 @@ export default function InventoryDrawer({
         <SheetDescription>Save inventory details.</SheetDescription>
       </SheetHeader>
       <form onSubmit={submit} className="mt-6 space-y-4">
-        <div className="relative">
-          <Input
-            value={form.productName}
-            placeholder="Product"
-            className={cn(showProductError ? "border-red-500 focus-visible:ring-red-500" : "")}
-            onFocus={() => setProductFocused(true)}
-            onBlur={() => setTimeout(() => setProductFocused(false), 120)}
-            onChange={(e) => {
-              setForm((prev) => ({ ...prev, productName: e.target.value }))
-              if (e.target.value.trim()) setShowProductError(false)
-            }}
-          />
-          {productFocused && productSuggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full rounded-md border border-[#EDE0E2] bg-white shadow">
-              {productSuggestions.map((name) => (
+        {mode === "add" ? (
+          <div className="mb-4 border-b border-[#EDE0E2] pb-4">
+            <div className="rounded-xl border border-[#EDE0E2] bg-[#F7F3F4] p-4">
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-[#1E1215]">Scan Barcode</p>
+              </div>
+              <div>
+                <label htmlFor="barcode-upc" className="text-sm font-medium text-[#1E1215] mb-1 block">
+                  Barcode (UPC)
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="barcode-upc"
+                    ref={upcInputRef}
+                    value={upcInput}
+                    placeholder="Scan or type UPC barcode..."
+                    disabled={scanning}
+                    onChange={(e) => setUpcInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        void runUpcScan()
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    className="bg-[#C4878E] text-white hover:bg-[#A86870]"
+                    disabled={scanning}
+                    onClick={() => void runUpcScan()}
+                  >
+                    {scanning ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Looking up...
+                      </>
+                    ) : (
+                      "Look Up"
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {scanError ? <p className="mt-2 text-sm text-[#C4878E]">{scanError}</p> : null}
+
+              {scanResult ? (
+                <div className="mt-3 space-y-2 rounded-lg border border-green-200 bg-[#F0FDF4] p-3">
+                  <p className="text-sm font-medium text-green-700">Found: {scanResult.name || "Product"}</p>
+                  <p className="text-xs text-green-700">
+                    Brand: {scanResult.brand || "-"} - Shade: {scanResult.shade || "-"}
+                  </p>
+                  {scanResult.images.length > 0 ? (
+                    <div className="flex gap-2">
+                      {scanResult.images.slice(0, 3).map((url, idx) => (
+                        <img
+                          key={`${url}-${idx}`}
+                          src={url}
+                          alt={`Scanned preview ${idx + 1}`}
+                          className="h-12 w-12 rounded-md border border-[#EDE0E2] object-cover"
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {(scanResult || scanError || upcInput) ? (
                 <button
-                  key={name}
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FCEEF0]"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setForm((prev) => ({ ...prev, productName: name }))
-                    setProductFocused(false)
-                  }}
+                  className="mt-2 text-xs text-[#8B6F74] underline hover:text-[#5D4548]"
+                  onClick={clearScan}
                 >
-                  {name}
+                  Clear scan
                 </button>
-              ))}
+              ) : null}
             </div>
-          )}
+          </div>
+        ) : null}
+
+        <div>
+          <label htmlFor="product-name" className="text-sm font-medium text-[#1E1215] mb-1 block">
+            Product Name
+          </label>
+          <div className="relative">
+            <Input
+              id="product-name"
+              ref={productNameRef}
+              value={form.productName}
+              placeholder="Product"
+              className={cn(showProductError ? "border-red-500 focus-visible:ring-red-500" : "")}
+              onFocus={() => setProductFocused(true)}
+              onBlur={() => setTimeout(() => setProductFocused(false), 120)}
+              onChange={(e) => {
+                setForm((prev) => ({ ...prev, productName: e.target.value }))
+                if (e.target.value.trim()) setShowProductError(false)
+              }}
+            />
+            {productFocused && productSuggestions.length > 0 && (
+              <div className="absolute z-20 mt-1 w-full rounded-md border border-[#EDE0E2] bg-white shadow">
+                {productSuggestions.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-[#FCEEF0]"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setForm((prev) => ({ ...prev, productName: name }))
+                      setProductFocused(false)
+                    }}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        <Input
-          value={form.brand}
-          placeholder="Brand"
-          onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))}
-        />
-        <Input
-          value={form.shade}
-          placeholder="Shade"
-          onChange={(e) => setForm((prev) => ({ ...prev, shade: e.target.value }))}
-        />
-        <Input
-          type="number"
-          value={form.qty}
-          placeholder="Qty"
-          onChange={(e) => setForm((prev) => ({ ...prev, qty: e.target.value }))}
-        />
+        <div>
+          <label htmlFor="brand" className="text-sm font-medium text-[#1E1215] mb-1 block">
+            Brand
+          </label>
+          <Input
+            id="brand"
+            value={form.brand}
+            placeholder="Brand"
+            onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label htmlFor="shade" className="text-sm font-medium text-[#1E1215] mb-1 block">
+            Shade / Colour
+          </label>
+          <Input
+            id="shade"
+            value={form.shade}
+            placeholder="Shade"
+            onChange={(e) => setForm((prev) => ({ ...prev, shade: e.target.value }))}
+          />
+          <p className="text-xs text-[#A08488] mt-1">e.g. 210W, Pillow Talk, Translucent</p>
+        </div>
+        <div>
+          <label htmlFor="qty" className="text-sm font-medium text-[#1E1215] mb-1 block">
+            Quantity
+          </label>
+          <Input
+            id="qty"
+            type="number"
+            value={form.qty}
+            placeholder="Qty"
+            onChange={(e) => setForm((prev) => ({ ...prev, qty: e.target.value }))}
+          />
+        </div>
 
         <div className="space-y-2">
-          <p className="text-sm text-[#5D4548]">Tags</p>
+          <label className="text-sm font-medium text-[#1E1215] mb-1 block">Tags</label>
+          <p className="text-xs text-[#A08488] mt-1">Select all that apply</p>
           {availableTags.length === 0 ? (
             <p className="text-xs text-[#8B6F74]">No tags configured. Add tags in Settings.</p>
           ) : (
@@ -342,39 +624,148 @@ export default function InventoryDrawer({
           )}
         </div>
 
+        <div className="space-y-2">
+
+          {images.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {images.map((url, idx) => (
+                <div key={`${url}-${idx}`} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDrawerLightboxIndex(idx)
+                      setDrawerLightboxOpen(true)
+                    }}
+                  >
+                    <img
+                      src={url}
+                      alt={`Inventory image ${idx + 1}`}
+                      className="h-20 w-20 rounded-lg border border-[#EDE0E2] object-cover"
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border border-[#EDE0E2] bg-white text-xs text-[#5D4548]"
+                    onClick={() =>
+                      setImages((prev) => prev.filter((_, imageIndex) => imageIndex !== idx))
+                    }
+                    aria-label="Remove image"
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {images.length < 3 ? (
+            <div>
+              <label htmlFor="image-url" className="text-sm font-medium text-[#1E1215] mb-1 block">
+                Image URL
+              </label>
+              <Input
+                id="image-url"
+                value={imageUrlDraft}
+                placeholder="Paste image URL and press Enter"
+                onChange={(e) => setImageUrlDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addImageFromDraft()
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <p className="text-xs text-[#8B6F74]">Maximum 3 images reached</p>
+          )}
+        </div>
+
         {type === "bd" ? (
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              type="number"
-              value={form.buyPriceBdt}
-              placeholder="Buy Price (BDT)"
-              onChange={(e) => setForm((prev) => ({ ...prev, buyPriceBdt: e.target.value }))}
-            />
-            <Input
-              type="number"
-              value={form.sellPriceBdt}
-              placeholder="Sell Price (BDT)"
-              onChange={(e) => setForm((prev) => ({ ...prev, sellPriceBdt: e.target.value }))}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="buy-price-bdt" className="text-sm font-medium text-[#1E1215] mb-1 block">
+                Buy Price (BDT)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A08488] text-sm pointer-events-none select-none">
+                  {"\u09F3"}
+                </span>
+                <Input
+                  id="buy-price-bdt"
+                  type="number"
+                  value={form.buyPriceBdt}
+                  placeholder="Buy Price (BDT)"
+                  className="pl-7"
+                  onChange={(e) => setForm((prev) => ({ ...prev, buyPriceBdt: e.target.value }))}
+                />
+              </div>
+              <p className="text-xs text-[#A08488] mt-1">What you paid per unit</p>
+            </div>
+            <div>
+              <label htmlFor="sell-price-bdt" className="text-sm font-medium text-[#1E1215] mb-1 block">
+                Sell Price (BDT)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A08488] text-sm pointer-events-none select-none">
+                  {"\u09F3"}
+                </span>
+                <Input
+                  id="sell-price-bdt"
+                  type="number"
+                  value={form.sellPriceBdt}
+                  placeholder="Sell Price (BDT)"
+                  className="pl-7"
+                  onChange={(e) => setForm((prev) => ({ ...prev, sellPriceBdt: e.target.value }))}
+                />
+              </div>
+              <p className="text-xs text-[#A08488] mt-1">Your selling price to the customer</p>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              type="number"
-              value={form.buyPriceUsd}
-              placeholder="Buy Price (USD)"
-              onChange={(e) => setForm((prev) => ({ ...prev, buyPriceUsd: e.target.value }))}
-            />
-            <Input
-              type="number"
-              value={form.weightG}
-              placeholder="Weight (g)"
-              onChange={(e) => setForm((prev) => ({ ...prev, weightG: e.target.value }))}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="buy-price-usd" className="text-sm font-medium text-[#1E1215] mb-1 block">
+                Buy Price (USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A08488] text-sm pointer-events-none select-none">
+                  $
+                </span>
+                <Input
+                  id="buy-price-usd"
+                  type="number"
+                  value={form.buyPriceUsd}
+                  placeholder="Buy Price (USD)"
+                  className="pl-7"
+                  onChange={(e) => setForm((prev) => ({ ...prev, buyPriceUsd: e.target.value }))}
+                />
+              </div>
+              <p className="text-xs text-[#A08488] mt-1">What you paid per unit</p>
+            </div>
+            <div>
+              <label htmlFor="weight-g" className="text-sm font-medium text-[#1E1215] mb-1 block">
+                Weight
+              </label>
+              <div className="relative">
+                <Input
+                  id="weight-g"
+                  type="number"
+                  value={form.weightG}
+                  placeholder="Weight (g)"
+                  className="pr-9"
+                  onChange={(e) => setForm((prev) => ({ ...prev, weightG: e.target.value }))}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A08488] text-sm pointer-events-none select-none">
+                  g
+                </span>
+              </div>
+              <p className="text-xs text-[#A08488] mt-1">Weight of one unit in grams</p>
+            </div>
           </div>
         )}
 
-        <SheetFooter>
+        <SheetFooter className="sticky bottom-0 bg-white pt-3">
           <Button type="button" variant="outline" onClick={() => setDrawerOpen(false)}>
             Cancel
           </Button>
@@ -383,6 +774,13 @@ export default function InventoryDrawer({
           </Button>
         </SheetFooter>
       </form>
+      <ImageLightbox
+        images={images}
+        productName={form.productName || "Inventory Item"}
+        open={drawerLightboxOpen}
+        onOpenChange={setDrawerLightboxOpen}
+        initialIndex={drawerLightboxIndex}
+      />
     </>
   )
 
