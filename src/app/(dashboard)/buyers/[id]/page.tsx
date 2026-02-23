@@ -1,17 +1,25 @@
+"use client"
+
 import Link from "next/link"
-import { headers } from "next/headers"
-import { notFound } from "next/navigation"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 
 import BuyerDrawer, { type BuyerData } from "@/components/shared/BuyerDrawer"
 import BuyerOrderHistory from "@/components/shared/BuyerOrderHistory"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type BuyerOrder = {
   id: string
-  sellPriceBdt: number
-  depositBdt: number
+  buyerId: string
   productName: string
   brand: string | null
+  shade: string | null
+  qty: number
+  sellPriceBdt: number
+  buyPriceUsd: number | null
+  depositBdt: number
+  source: "BD_STOCK" | "USA_STOCK" | "PRE_ORDER"
   status:
     | "TO_BE_PURCHASED"
     | "PURCHASED"
@@ -19,6 +27,9 @@ type BuyerOrder = {
     | "IN_BANGLADESH"
     | "DELIVERED"
     | "RETURNED"
+  batchId: string | null
+  tags: string[]
+  notes: string | null
   createdAt: string
 }
 
@@ -34,34 +45,111 @@ function formatBdt(value: number) {
   }).format(value)
 }
 
-async function getBuyer(id: string) {
-  const h = headers()
-  const host = h.get("x-forwarded-host") ?? h.get("host")
-  const proto = h.get("x-forwarded-proto") ?? "http"
-  const cookie = h.get("cookie")
-  if (!host) {
-    throw new Error("Missing request host header.")
+export default function BuyerProfilePage() {
+  const params = useParams<{ id: string }>()
+  const buyerId = params?.id
+
+  const [buyer, setBuyer] = useState<BuyerProfileResponse | null>(null)
+  const [orders, setOrders] = useState<BuyerOrder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  const fetchBuyer = useCallback(async () => {
+    if (!buyerId) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/buyers/${buyerId}`, { cache: "no-store" })
+      if (res.status === 404) {
+        setNotFound(true)
+        setBuyer(null)
+        setOrders([])
+        return
+      }
+      if (!res.ok) return
+      const data = (await res.json()) as BuyerProfileResponse
+      setNotFound(false)
+      setBuyer(data)
+      setOrders(data.orders ?? [])
+    } finally {
+      setLoading(false)
+    }
+  }, [buyerId])
+
+  const refreshOrders = useCallback(async () => {
+    if (!buyerId) return
+    try {
+      const res = await fetch(`/api/buyers/${buyerId}`, { cache: "no-store" })
+      if (!res.ok) return
+      const data = (await res.json()) as BuyerProfileResponse
+      setBuyer(data)
+      setOrders(data.orders ?? [])
+    } catch {
+      // keep current UI state on refresh error
+    }
+  }, [buyerId])
+
+  useEffect(() => {
+    void fetchBuyer()
+  }, [fetchBuyer])
+
+  const totalOrders = orders.length
+  const totalSpend = useMemo(
+    () => orders.reduce((sum, order) => sum + order.sellPriceBdt, 0),
+    [orders]
+  )
+  const outstandingBalance = useMemo(
+    () =>
+      orders
+        .filter((order) => order.status !== "DELIVERED" && order.status !== "RETURNED")
+        .reduce((sum, order) => sum + (order.sellPriceBdt - order.depositBdt), 0),
+    [orders]
+  )
+
+  if (notFound) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Buyer not found</h1>
+        <Button asChild variant="outline">
+          <Link href="/buyers">Back to Buyers</Link>
+        </Button>
+      </div>
+    )
   }
 
-  const res = await fetch(`${proto}://${host}/api/buyers/${id}`, {
-    cache: "no-store",
-    headers: cookie ? { cookie } : undefined,
-  })
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-4 w-56" />
+          <Skeleton className="h-4 w-72" />
+          <Skeleton className="h-4 w-80" />
+        </div>
 
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error("Failed to fetch buyer profile.")
-  return (await res.json()) as BuyerProfileResponse
-}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
 
-export default async function BuyerProfilePage({ params }: { params: { id: string } }) {
-  const buyer = await getBuyer(params.id)
-  if (!buyer) notFound()
+        <section className="space-y-3">
+          <Skeleton className="h-7 w-40" />
+          <div className="space-y-3">
+            <Skeleton className="h-[88px] w-full rounded-lg" />
+            <Skeleton className="h-[88px] w-full rounded-lg" />
+            <Skeleton className="h-[88px] w-full rounded-lg" />
+          </div>
+        </section>
+      </div>
+    )
+  }
 
-  const totalOrders = buyer.orders.length
-  const totalSpend = buyer.orders.reduce((sum, order) => sum + order.sellPriceBdt, 0)
-  const outstandingBalance = buyer.orders
-    .filter((order) => !["DELIVERED", "RETURNED"].includes(order.status))
-    .reduce((sum, order) => sum + (order.sellPriceBdt - order.depositBdt), 0)
+  if (!buyer) {
+    return null
+  }
 
   return (
     <div className="space-y-8">
@@ -114,7 +202,12 @@ export default async function BuyerProfilePage({ params }: { params: { id: strin
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-[#1E1215]">Order History</h2>
-        <BuyerOrderHistory orders={buyer.orders} />
+        <BuyerOrderHistory
+          orders={orders}
+          buyerId={buyer.id}
+          buyerName={buyer.name}
+          onOrdersChanged={refreshOrders}
+        />
       </section>
     </div>
   )

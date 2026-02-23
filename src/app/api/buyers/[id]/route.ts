@@ -23,11 +23,20 @@ export async function GET(_req: Request, { params }: Params) {
       include: {
         orders: {
           select: {
+            id: true,
+            buyerId: true,
+            qty: true,
             sellPriceBdt: true,
+            buyPriceUsd: true,
             depositBdt: true,
             productName: true,
             brand: true,
+            shade: true,
+            source: true,
             status: true,
+            batchId: true,
+            tags: true,
+            notes: true,
             createdAt: true,
           },
           orderBy: { createdAt: "desc" },
