@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { LogOut } from "lucide-react"
+import { LogOut, Menu, Plus, X } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import GlobalSearch from "@/components/shared/GlobalSearch"
@@ -35,6 +35,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<CurrentUser | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const isMobile = window.matchMedia("(max-width: 1023px)").matches
+    if (sidebarOpen && isMobile) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [sidebarOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -83,9 +100,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 w-[220px] border-r border-[#E8C8CC] bg-[#F7F3F4] text-[#1E1215]">
-        <div className="flex h-full flex-col">
+    <div className="flex h-screen overflow-hidden">
+      <aside
+        className={[
+          "flex flex-col h-full bg-[#F7F3F4]",
+          "border-r border-[#E8C8CC]",
+          "transition-transform duration-300 ease-in-out",
+          "z-40 w-[220px] flex-shrink-0",
+          "fixed lg:relative top-0 left-0",
+          sidebarOpen
+            ? "translate-x-0 shadow-[4px_0_24px_rgba(0,0,0,0.08)] lg:shadow-none"
+            : "-translate-x-full lg:translate-x-0",
+        ].join(" ")}
+      >
+        <div className="flex h-full flex-col overflow-y-auto">
+          <div className="lg:hidden flex justify-end p-2">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="p-1.5 rounded-lg hover:bg-[#FCEEF0] transition-colors text-[#A08488] hover:text-[#1E1215]"
+              aria-label="Close menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
           <div>
             <div className="mx-4 mt-4 rounded-xl border border-[#EDE0E2] bg-[#f0f0f0] p-3">
               <Image
@@ -160,7 +198,56 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </aside>
-      <main className="ml-[220px] min-h-screen overflow-y-auto bg-[#FAFAFA] p-6">{children}</main>
+
+      <div
+        className={[
+          "flex flex-col flex-1 overflow-hidden",
+          "transition-all duration-300 ease-in-out",
+          sidebarOpen ? "lg:ml-0" : "",
+        ].join(" ")}
+      >
+        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#EDE0E2] sticky top-0 z-30">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            className="p-2 rounded-lg hover:bg-[#FCEEF0] transition-colors text-[#1E1215]"
+            aria-label="Toggle menu"
+          >
+            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt="Serene Say"
+              width={28}
+              height={28}
+              className="w-7 h-7 object-contain"
+            />
+            <span className="font-bold text-sm text-[#1E1215] tracking-wider">SERENE SAY</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => router.push("/orders?new=true")}
+            className="p-2 rounded-lg bg-[#C4878E] text-white hover:bg-[#A86870] transition-colors"
+            aria-label="New order"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </header>
+
+        <main
+          className={[
+            "flex-1 overflow-auto",
+            "transition-all duration-300 ease-in-out",
+            "p-4 lg:p-6 bg-[#FAFAFA]",
+            sidebarOpen ? "ml-[220px] lg:ml-0" : "ml-0",
+          ].join(" ")}
+        >
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
