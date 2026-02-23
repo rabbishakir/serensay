@@ -9,7 +9,7 @@ const UsaInventoryUpdateSchema = z.object({
   brand: z.string().optional(),
   shade: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  images: z.array(z.string().min(1)).max(3).optional(),
+  imageUrl: z.string().optional(),
   qty: z.number().int().optional(),
   buyPriceUsd: z.number().optional(),
   weightG: z.number().optional(),

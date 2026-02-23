@@ -59,7 +59,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           where: { id: existingBd.id },
           data: {
             qty: existingBd.qty + parsed.qty,
-            images: existingBd.images?.length ? existingBd.images : usaItem.images ?? [],
+            imageUrl: existingBd.imageUrl || usaItem.imageUrl || "",
           },
         })
         return bdItem
@@ -71,7 +71,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           brand: usaItem.brand,
           shade: usaItem.shade,
           tags: usaItem.tags,
-          images: usaItem.images ?? [],
+          imageUrl: usaItem.imageUrl || "",
           qty: parsed.qty,
           buyPriceBdt: null,
         },

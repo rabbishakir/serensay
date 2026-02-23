@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable @next/next/no-img-element */
 
 import Fuse from "fuse.js"
 import { Search } from "lucide-react"
@@ -42,6 +43,7 @@ type SearchBdInventory = {
   productName: string
   brand: string | null
   shade: string | null
+  imageUrl: string | null
   qty: number
   sellPriceBdt: number | null
 }
@@ -51,6 +53,7 @@ type SearchUsaInventory = {
   productName: string
   brand: string | null
   shade: string | null
+  imageUrl: string | null
   qty: number
   buyPriceUsd: number | null
 }
@@ -332,14 +335,23 @@ export default function GlobalSearch() {
                   }}
                 >
                   <div className="flex w-full items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-2 truncate">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                        {item.productName}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.brand ?? "-"} {item.shade ? ` - ${item.shade}` : ""}
-                      </p>
+                    <div className="min-w-0 flex items-center gap-2">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="w-8 h-8 rounded object-cover border border-[#EDE0E2] flex-shrink-0"
+                        />
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2 truncate">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                          {item.productName}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.brand ?? "-"} {item.shade ? ` - ${item.shade}` : ""}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <span
@@ -390,14 +402,23 @@ export default function GlobalSearch() {
                   }}
                 >
                   <div className="flex w-full items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-2 truncate">
-                        <span className="h-2 w-2 rounded-full bg-[#C4878E]" />
-                        {item.productName}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.brand ?? "-"} {item.shade ? ` - ${item.shade}` : ""}
-                      </p>
+                    <div className="min-w-0 flex items-center gap-2">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="w-8 h-8 rounded object-cover border border-[#EDE0E2] flex-shrink-0"
+                        />
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2 truncate">
+                          <span className="h-2 w-2 rounded-full bg-[#C4878E]" />
+                          {item.productName}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.brand ?? "-"} {item.shade ? ` - ${item.shade}` : ""}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <span

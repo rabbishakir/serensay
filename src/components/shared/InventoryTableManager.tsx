@@ -6,7 +6,6 @@ import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import * as XLSX from "xlsx"
 
-import ImageLightbox from "@/components/shared/ImageLightbox"
 import InventoryDrawer, {
   type BdInventoryItem,
   type InventoryType,
@@ -67,11 +66,7 @@ function InventoryImageThumb({
   item: InventoryItem
   onOpen: (item: InventoryItem) => void
 }) {
-  const [imageFailed, setImageFailed] = useState(false)
-  const hasImages = Array.isArray(item.images) && item.images.length > 0
-  const firstImage = hasImages ? item.images[0] : ""
-
-  if (!hasImages) {
+  if (!item.imageUrl) {
     return (
       <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-[#EDE0E2] bg-[#F7F3F4]">
         <ImageIcon className="h-5 w-5 text-[#A08488]" />
@@ -80,26 +75,21 @@ function InventoryImageThumb({
   }
 
   return (
-    <button
-      type="button"
-      className="flex h-14 w-14 items-center justify-center rounded-lg border border-[#EDE0E2] bg-[#F7F3F4] transition-opacity hover:opacity-80"
+    <div
+      className="cursor-pointer"
       onClick={() => onOpen(item)}
     >
-      {imageFailed ? (
-        <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-[#EDE0E2] bg-[#F7F3F4]">
-          <ImageIcon className="h-5 w-5 text-[#A08488]" />
-        </div>
-      ) : (
-        <img
-          src={firstImage}
-          alt={item.productName}
-          width={56}
-          height={56}
-          className="h-14 w-14 rounded-lg object-cover"
-          onError={() => setImageFailed(true)}
-        />
-      )}
-    </button>
+      <img
+        src={item.imageUrl}
+        alt={item.productName}
+        width={56}
+        height={56}
+        className="w-14 h-14 rounded-lg object-cover border border-[#EDE0E2] hover:opacity-80 transition-opacity"
+        onError={(e) => {
+          e.currentTarget.parentElement!.style.display = "none"
+        }}
+      />
+    </div>
   )
 }
 
@@ -118,6 +108,7 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false)
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false)
   const [lightboxItem, setLightboxItem] = useState<InventoryItem | null>(null)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   const endpoint = `/api/inventory/${type}`
 
@@ -504,7 +495,13 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
                 return (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <InventoryImageThumb item={item} onOpen={setLightboxItem} />
+                      <InventoryImageThumb
+                        item={item}
+                        onOpen={(next) => {
+                          setLightboxItem(next)
+                          setLightboxOpen(true)
+                        }}
+                      />
                     </TableCell>
                     <TableCell>{item.productName}</TableCell>
                     <TableCell>{item.brand || "-"}</TableCell>
@@ -617,14 +614,27 @@ export default function InventoryTableManager({ type, initialItems }: InventoryT
         </Table>
       </div>
 
-      <ImageLightbox
-        images={lightboxItem?.images || []}
-        productName={lightboxItem?.productName || ""}
-        open={lightboxItem !== null}
+      <Dialog
+        open={lightboxOpen}
         onOpenChange={(open) => {
+          setLightboxOpen(open)
           if (!open) setLightboxItem(null)
         }}
-      />
+      >
+        <DialogContent className="max-w-2xl p-2">
+          <p className="text-sm font-medium text-[#1E1215] px-2 pb-1">
+            {lightboxItem?.productName}
+            {lightboxItem?.brand ? ` · ${lightboxItem.brand}` : ""}
+          </p>
+          {lightboxItem?.imageUrl ? (
+            <img
+              src={lightboxItem.imageUrl}
+              alt={lightboxItem.productName}
+              className="w-full max-h-[80vh] object-contain rounded-lg"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       {editingItem ? (
         <InventoryDrawer

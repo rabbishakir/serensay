@@ -9,7 +9,7 @@ const UsaInventorySchema = z.object({
   brand: z.string().optional(),
   shade: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  images: z.array(z.string().min(1)).max(3).optional(),
+  imageUrl: z.string().optional(),
   qty: z.number().int().optional(),
   buyPriceUsd: z.number().optional(),
   weightG: z.number().optional(),
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       data: {
         ...parsed,
         tags: parsed.tags ?? [],
-        images: parsed.images ?? [],
+        imageUrl: parsed.imageUrl ?? "",
       },
     })
     return NextResponse.json(created, { status: 201 })

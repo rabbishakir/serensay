@@ -1,18 +1,17 @@
 "use client"
 /* eslint-disable @next/next/no-img-element */
 
-import { Loader2 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { ImageIcon, Loader2, Upload } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react"
 import { toast } from "sonner"
 
-import ImageLightbox from "@/components/shared/ImageLightbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -28,7 +27,7 @@ export type BdInventoryItem = {
   brand: string | null
   shade: string | null
   tags: string[]
-  images: string[]
+  imageUrl: string | null
   qty: number
   buyPriceBdt: number | null
   sellPriceBdt: number | null
@@ -41,7 +40,7 @@ export type UsaInventoryItem = {
   brand: string | null
   shade: string | null
   tags: string[]
-  images: string[]
+  imageUrl: string | null
   qty: number
   buyPriceUsd: number | null
   weightG: number | null
@@ -141,28 +140,27 @@ export default function InventoryDrawer({
   const [productSuggestions, setProductSuggestions] = useState<string[]>([])
   const [availableTags, setAvailableTags] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [images, setImages] = useState<string[]>([])
-  const [imageUrlDraft, setImageUrlDraft] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const [productFocused, setProductFocused] = useState(false)
   const [showProductError, setShowProductError] = useState(false)
   const [upcInput, setUpcInput] = useState("")
   const [scanning, setScanning] = useState(false)
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [scanError, setScanError] = useState("")
-  const [drawerLightboxOpen, setDrawerLightboxOpen] = useState(false)
-  const [drawerLightboxIndex, setDrawerLightboxIndex] = useState(0)
   const [autoFilledFields, setAutoFilledFields] = useState<{
     productName: boolean
     brand: boolean
     shade: boolean
     weightG: boolean
-    images: boolean
+    imageUrl: boolean
   }>({
     productName: false,
     brand: false,
     shade: false,
     weightG: false,
-    images: false,
+    imageUrl: false,
   })
 
   const upcInputRef = useRef<HTMLInputElement | null>(null)
@@ -176,11 +174,17 @@ export default function InventoryDrawer({
   }
 
   useEffect(() => {
-    if (!drawerOpen) return
+    if (!drawerOpen) {
+      setImageUrl("")
+      setUploading(false)
+      setLightboxOpen(false)
+      return
+    }
     setForm(toFormState(type, item))
     setSelectedTags(item?.tags ?? [])
-    setImages(item?.images ?? [])
-    setImageUrlDraft("")
+    setImageUrl(item?.imageUrl ?? "")
+    setUploading(false)
+    setLightboxOpen(false)
     setUpcInput("")
     setScanning(false)
     setScanResult(null)
@@ -190,7 +194,7 @@ export default function InventoryDrawer({
       brand: false,
       shade: false,
       weightG: false,
-      images: false,
+      imageUrl: false,
     })
     setShowProductError(false)
   }, [drawerOpen, type, item])
@@ -267,7 +271,7 @@ export default function InventoryDrawer({
       brand: false,
       shade: false,
       weightG: false,
-      images: false,
+      imageUrl: false,
     }
 
     setForm((prev) => {
@@ -293,12 +297,11 @@ export default function InventoryDrawer({
       return next
     })
 
-    setImages((prev) => {
-      if (prev.length > 0) return prev
-      if (product.images.length === 0) return prev
-      nextAutoFilled.images = true
-      return product.images.slice(0, 3)
-    })
+    const scannedImage = product.images[0] || ""
+    if (!imageUrl.trim() && scannedImage) {
+      setImageUrl(scannedImage)
+      nextAutoFilled.imageUrl = true
+    }
 
     setAutoFilledFields(nextAutoFilled)
 
@@ -346,28 +349,53 @@ export default function InventoryDrawer({
       shade: autoFilledFields.shade ? "" : prev.shade,
       weightG: autoFilledFields.weightG ? "" : prev.weightG,
     }))
-    if (autoFilledFields.images) {
-      setImages([])
+    if (autoFilledFields.imageUrl) {
+      setImageUrl("")
     }
     setAutoFilledFields({
       productName: false,
       brand: false,
       shade: false,
       weightG: false,
-      images: false,
+      imageUrl: false,
     })
   }
 
-  const addImageFromDraft = () => {
-    const next = imageUrlDraft.trim()
-    if (!next) return
-    if (images.includes(next)) {
-      setImageUrlDraft("")
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      toast.error("Image too large. Max 5MB.")
+      e.target.value = ""
       return
     }
-    if (images.length >= 3) return
-    setImages((prev) => [...prev, next].slice(0, 3))
-    setImageUrlDraft("")
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data?.error || "Upload failed")
+        return
+      }
+
+      setImageUrl(String(data?.url ?? ""))
+      toast.success("Image uploaded")
+    } catch {
+      toast.error("Upload failed. Please try again.")
+    } finally {
+      setUploading(false)
+      e.target.value = ""
+    }
   }
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -388,7 +416,7 @@ export default function InventoryDrawer({
               shade: form.shade.trim() || undefined,
               qty: Number(form.qty || 0),
               tags: selectedTags,
-              images,
+              imageUrl: imageUrl.trim(),
               buyPriceBdt: form.buyPriceBdt.trim() ? Number(form.buyPriceBdt) : undefined,
               sellPriceBdt: form.sellPriceBdt.trim() ? Number(form.sellPriceBdt) : undefined,
             }
@@ -398,7 +426,7 @@ export default function InventoryDrawer({
               shade: form.shade.trim() || undefined,
               qty: Number(form.qty || 0),
               tags: selectedTags,
-              images,
+              imageUrl: imageUrl.trim(),
               buyPriceUsd: form.buyPriceUsd.trim() ? Number(form.buyPriceUsd) : undefined,
               weightG: form.weightG.trim() ? Number(form.weightG) : undefined,
             }
@@ -432,50 +460,41 @@ export default function InventoryDrawer({
     <>
       <SheetHeader>
         <SheetTitle>{title}</SheetTitle>
-        <SheetDescription>Save inventory details.</SheetDescription>
       </SheetHeader>
       <form onSubmit={submit} className="mt-6 space-y-4">
         {mode === "add" ? (
           <div className="mb-4 border-b border-[#EDE0E2] pb-4">
             <div className="rounded-xl border border-[#EDE0E2] bg-[#F7F3F4] p-4">
-              <div className="mb-3">
-                <p className="text-sm font-semibold text-[#1E1215]">Scan Barcode</p>
-              </div>
-              <div>
-                <label htmlFor="barcode-upc" className="text-sm font-medium text-[#1E1215] mb-1 block">
-                  Barcode (UPC)
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    id="barcode-upc"
-                    ref={upcInputRef}
-                    value={upcInput}
-                    placeholder="Scan or type UPC barcode..."
-                    disabled={scanning}
-                    onChange={(e) => setUpcInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        void runUpcScan()
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    className="bg-[#C4878E] text-white hover:bg-[#A86870]"
-                    disabled={scanning}
-                    onClick={() => void runUpcScan()}
-                  >
-                    {scanning ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Looking up...
-                      </>
-                    ) : (
-                      "Look Up"
-                    )}
-                  </Button>
-                </div>
+              <div className="flex gap-2">
+                <Input
+                  id="barcode-upc"
+                  ref={upcInputRef}
+                  value={upcInput}
+                  placeholder="Scan or type UPC barcode..."
+                  disabled={scanning}
+                  onChange={(e) => setUpcInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      void runUpcScan()
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  className="bg-[#C4878E] text-white hover:bg-[#A86870]"
+                  disabled={scanning}
+                  onClick={() => void runUpcScan()}
+                >
+                  {scanning ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Looking up...
+                    </>
+                  ) : (
+                    "Look Up"
+                  )}
+                </Button>
               </div>
 
               {scanError ? <p className="mt-2 text-sm text-[#C4878E]">{scanError}</p> : null}
@@ -590,8 +609,6 @@ export default function InventoryDrawer({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-[#1E1215] mb-1 block">Tags</label>
-          <p className="text-xs text-[#A08488] mt-1">Select all that apply</p>
           {availableTags.length === 0 ? (
             <p className="text-xs text-[#8B6F74]">No tags configured. Add tags in Settings.</p>
           ) : (
@@ -625,60 +642,66 @@ export default function InventoryDrawer({
         </div>
 
         <div className="space-y-2">
+          <label className="text-sm font-medium text-[#1E1215] mb-1 block">Product Image</label>
+          <p className="text-xs text-[#A08488] mt-1">Upload a photo or auto-filled by barcode scan</p>
+          <div className="flex items-start gap-4">
+            {imageUrl ? (
+              <div
+                className="w-24 h-24 rounded-xl overflow-hidden border border-[#EDE0E2] cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
+                onClick={() => setLightboxOpen(true)}
+              >
+                <img
+                  src={imageUrl}
+                  alt="Product"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none"
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-xl border-2 border-dashed border-[#EDE0E2] bg-[#F7F3F4] flex items-center justify-center flex-shrink-0">
+                <ImageIcon className="w-8 h-8 text-[#A08488]" />
+              </div>
+            )}
 
-          {images.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {images.map((url, idx) => (
-                <div key={`${url}-${idx}`} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDrawerLightboxIndex(idx)
-                      setDrawerLightboxOpen(true)
-                    }}
-                  >
-                    <img
-                      src={url}
-                      alt={`Inventory image ${idx + 1}`}
-                      className="h-20 w-20 rounded-lg border border-[#EDE0E2] object-cover"
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full border border-[#EDE0E2] bg-white text-xs text-[#5D4548]"
-                    onClick={() =>
-                      setImages((prev) => prev.filter((_, imageIndex) => imageIndex !== idx))
-                    }
-                    aria-label="Remove image"
-                  >
-                    x
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          {images.length < 3 ? (
             <div>
-              <label htmlFor="image-url" className="text-sm font-medium text-[#1E1215] mb-1 block">
-                Image URL
+              <label
+                htmlFor="imageUpload"
+                className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#EDE0E2] bg-white text-sm text-[#1E1215] font-medium hover:bg-[#F7F3F4] transition-colors"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload Image
+                  </>
+                )}
               </label>
-              <Input
-                id="image-url"
-                value={imageUrlDraft}
-                placeholder="Paste image URL and press Enter"
-                onChange={(e) => setImageUrlDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    addImageFromDraft()
-                  }
-                }}
+              <input
+                id="imageUpload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleImageUpload}
+                disabled={uploading}
               />
+              {imageUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setImageUrl("")}
+                  className="text-xs text-[#A08488] hover:text-red-400 mt-1 transition-colors block"
+                >
+                  x Remove image
+                </button>
+              ) : null}
+              <p className="text-xs text-[#A08488] mt-2">Max 5MB · JPG, PNG, WebP</p>
             </div>
-          ) : (
-            <p className="text-xs text-[#8B6F74]">Maximum 3 images reached</p>
-          )}
+          </div>
         </div>
 
         {type === "bd" ? (
@@ -774,13 +797,17 @@ export default function InventoryDrawer({
           </Button>
         </SheetFooter>
       </form>
-      <ImageLightbox
-        images={images}
-        productName={form.productName || "Inventory Item"}
-        open={drawerLightboxOpen}
-        onOpenChange={setDrawerLightboxOpen}
-        initialIndex={drawerLightboxIndex}
-      />
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-2xl p-2">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt="Product"
+              className="w-full max-h-[80vh] object-contain rounded-lg"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   )
 
