@@ -8,6 +8,11 @@ const MoveSchema = z.object({
   qty: z.number().int().positive("Qty must be greater than 0."),
 })
 
+type PrismaTransactionClient = Omit<
+  typeof prisma,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
+
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getSession(req)
   if (!session.isLoggedIn) {
@@ -24,7 +29,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   try {
-    const moved = await prisma.$transaction(async (tx) => {
+    const moved = await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       const usaItem = await tx.usaInventory.findUnique({
         where: { id: params.id },
       })

@@ -57,13 +57,13 @@ export async function GET(req: NextRequest) {
     ])
 
     const outstandingMap = new Map(
-      outstandingByBuyer.map((entry) => [
+      outstandingByBuyer.map((entry: (typeof outstandingByBuyer)[number]) => [
         entry.buyerId,
         (entry._sum.sellPriceBdt ?? 0) - (entry._sum.depositBdt ?? 0),
       ])
     )
 
-    const result = buyers.map((buyer) => ({
+    const result = buyers.map((buyer: (typeof buyers)[number]) => ({
       ...buyer,
       outstandingBalance: outstandingMap.get(buyer.id) ?? 0,
     }))

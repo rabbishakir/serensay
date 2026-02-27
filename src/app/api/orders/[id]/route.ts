@@ -1,4 +1,3 @@
-import { OrderStatus } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { getSession } from "@/lib/session"
@@ -10,6 +9,15 @@ import { OrderSchema } from "@/lib/validations"
 type Params = {
   params: { id: string }
 }
+
+type PrismaTransactionClient = Omit<
+  typeof prisma,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
+const ORDER_STATUS = {
+  DELIVERED: "DELIVERED",
+  RETURNED: "RETURNED",
+} as const
 
 const OrderUpdateSchema = OrderSchema.partial()
 class NotFoundError extends Error {}
@@ -66,7 +74,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   )
 
   try {
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       const existing = await tx.order.findUnique({
         where: { id: params.id },
         select: {
@@ -94,8 +102,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       })
 
       if (
-        parsedBody.status === OrderStatus.RETURNED &&
-        existing.status !== OrderStatus.RETURNED
+        parsedBody.status === ORDER_STATUS.RETURNED &&
+        existing.status !== ORDER_STATUS.RETURNED
       ) {
         await restoreToInventory(tx, {
           productName: existing.productName,
@@ -126,7 +134,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       const existing = await tx.order.findUnique({
         where: { id: params.id },
         select: {
@@ -144,8 +152,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       }
 
       if (
-        existing.status !== OrderStatus.DELIVERED &&
-        existing.status !== OrderStatus.RETURNED
+        existing.status !== ORDER_STATUS.DELIVERED &&
+        existing.status !== ORDER_STATUS.RETURNED
       ) {
         await restoreToInventory(tx, {
           productName: existing.productName,

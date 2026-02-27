@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { getSession } from "@/lib/session"
 
@@ -148,7 +147,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const updated = await prisma.shipment.update({
       where: { id: params.id },
       data: {
-        stockItems: parsed.stockItems as Prisma.InputJsonValue,
+        stockItems: parsed.stockItems,
       },
       select: {
         id: true,

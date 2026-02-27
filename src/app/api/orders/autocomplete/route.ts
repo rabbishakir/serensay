@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/session"
 
@@ -22,28 +21,28 @@ export async function GET(req: NextRequest) {
   try {
     const rows =
       field === "productName"
-        ? await prisma.$queryRaw<{ value: string }[]>(
-            Prisma.sql`
-              SELECT "productName" AS value
-              FROM "orders"
-              WHERE "productName" IS NOT NULL AND "productName" <> ''
-              GROUP BY "productName"
-              ORDER BY COUNT(*) DESC
-              LIMIT 20
+        ? await prisma.$queryRawUnsafe<{ value: string }[]>(
+            `
+            SELECT "productName" AS value
+            FROM "orders"
+            WHERE "productName" IS NOT NULL AND "productName" <> ''
+            GROUP BY "productName"
+            ORDER BY COUNT(*) DESC
+            LIMIT 20
             `
           )
-        : await prisma.$queryRaw<{ value: string }[]>(
-            Prisma.sql`
-              SELECT "brand" AS value
-              FROM "orders"
-              WHERE "brand" IS NOT NULL AND "brand" <> ''
-              GROUP BY "brand"
-              ORDER BY COUNT(*) DESC
-              LIMIT 20
+        : await prisma.$queryRawUnsafe<{ value: string }[]>(
+            `
+            SELECT "brand" AS value
+            FROM "orders"
+            WHERE "brand" IS NOT NULL AND "brand" <> ''
+            GROUP BY "brand"
+            ORDER BY COUNT(*) DESC
+            LIMIT 20
             `
           )
 
-    return NextResponse.json({ values: rows.map((row) => row.value) })
+    return NextResponse.json({ values: rows.map((row: (typeof rows)[number]) => row.value) })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch autocomplete values."
     return NextResponse.json({ error: message }, { status: 500 })

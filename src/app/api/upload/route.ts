@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     const uploadDir = process.env.UPLOAD_DIR
       ? path.resolve(process.cwd(), process.env.UPLOAD_DIR)
-      : path.join(process.cwd(), "public", "uploads", "inventory")
+      : path.join(process.cwd(), "uploads", "inventory")
     fs.mkdirSync(uploadDir, { recursive: true })
 
     const bytes = await file.arrayBuffer()

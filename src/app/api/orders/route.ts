@@ -1,4 +1,3 @@
-import { type Prisma, OrderStatus, Source } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { getSession } from "@/lib/session"
@@ -8,6 +7,21 @@ import { deductFromInventory } from "@/lib/inventoryUtils"
 import { OrderSchema } from "@/lib/validations"
 
 const PAGE_SIZE = 50
+type PrismaTransactionClient = Omit<
+  typeof prisma,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
+const ORDER_STATUSES = [
+  "TO_BE_PURCHASED",
+  "PURCHASED",
+  "IN_TRANSIT",
+  "IN_BANGLADESH",
+  "DELIVERED",
+  "RETURNED",
+] as const
+const SOURCES = ["BD_STOCK", "USA_STOCK", "PRE_ORDER"] as const
+type OrderStatus = (typeof ORDER_STATUSES)[number]
+type Source = (typeof SOURCES)[number]
 
 function parseEnumValue<T extends string>(value: string | null, values: readonly T[]) {
   if (!value) return null
@@ -28,12 +42,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid page." }, { status: 400 })
   }
 
-  const status = parseEnumValue(params.get("status"), Object.values(OrderStatus))
+  const status = parseEnumValue(params.get("status"), ORDER_STATUSES)
   if (status === undefined) {
     return NextResponse.json({ error: "Invalid status filter." }, { status: 400 })
   }
 
-  const source = parseEnumValue(params.get("source"), Object.values(Source))
+  const source = parseEnumValue(params.get("source"), SOURCES)
   if (source === undefined) {
     return NextResponse.json({ error: "Invalid source filter." }, { status: 400 })
   }
@@ -42,7 +56,7 @@ export async function GET(req: NextRequest) {
   const search = params.get("search")?.trim()
   const tag = params.get("tag")?.trim()
 
-  const where: Prisma.OrderWhereInput = {}
+  const where = {} as Record<string, unknown>
   if (status) where.status = status
   if (source) where.source = source
   if (buyerId) where.buyerId = buyerId
@@ -98,15 +112,16 @@ export async function POST(req: NextRequest) {
   }
 
   const autoStatusBySource: Record<Source, OrderStatus> = {
-    BD_STOCK: OrderStatus.IN_BANGLADESH,
-    USA_STOCK: OrderStatus.PURCHASED,
-    PRE_ORDER: OrderStatus.TO_BE_PURCHASED,
+    BD_STOCK: "IN_BANGLADESH",
+    USA_STOCK: "PURCHASED",
+    PRE_ORDER: "TO_BE_PURCHASED",
   }
 
-  const status = parsed.status ?? autoStatusBySource[parsed.source]
+  const parsedSource = parsed.source as Source
+  const status = (parsed.status as OrderStatus | undefined) ?? autoStatusBySource[parsedSource]
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       const order = await tx.order.create({
         data: {
           ...parsed,

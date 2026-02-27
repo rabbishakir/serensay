@@ -1,4 +1,3 @@
-import { OrderStatus } from "@prisma/client"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { getSession } from "@/lib/session"
@@ -8,6 +7,15 @@ import { prisma } from "@/lib/db"
 type Params = {
   params: { id: string }
 }
+
+type PrismaTransactionClient = Omit<
+  typeof prisma,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
+const ORDER_STATUS = {
+  TO_BE_PURCHASED: "TO_BE_PURCHASED",
+  PURCHASED: "PURCHASED",
+} as const
 
 class ApiError extends Error {
   status: number
@@ -41,7 +49,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       const order = await tx.order.findUnique({
         where: { id: params.id },
       })
@@ -50,14 +58,14 @@ export async function POST(req: NextRequest, { params }: Params) {
         throw new ApiError("Order not found", 404)
       }
 
-      if (order.status !== OrderStatus.TO_BE_PURCHASED) {
+      if (order.status !== ORDER_STATUS.TO_BE_PURCHASED) {
         throw new ApiError("Order is not in To Be Purchased status", 400)
       }
 
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: {
-          status: OrderStatus.PURCHASED,
+          status: ORDER_STATUS.PURCHASED,
           buyPriceUsd: parsedBody.buyPriceUsd,
         },
         include: {

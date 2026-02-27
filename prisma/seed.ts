@@ -1,6 +1,27 @@
-import { OrderStatus, ShipmentStatus, Source } from "@prisma/client"
+import { PrismaClient } from "@prisma/client"
 
 import { prisma } from "../src/lib/db"
+
+const OrderStatus = {
+  TO_BE_PURCHASED: "TO_BE_PURCHASED",
+  PURCHASED: "PURCHASED",
+  IN_TRANSIT: "IN_TRANSIT",
+  IN_BANGLADESH: "IN_BANGLADESH",
+  DELIVERED: "DELIVERED",
+  RETURNED: "RETURNED",
+} as const
+
+const ShipmentStatus = {
+  PACKING: "PACKING",
+  IN_TRANSIT: "IN_TRANSIT",
+  ARRIVED: "ARRIVED",
+} as const
+
+const Source = {
+  BD_STOCK: "BD_STOCK",
+  USA_STOCK: "USA_STOCK",
+  PRE_ORDER: "PRE_ORDER",
+} as const
 
 async function main() {
   console.log("Seeding started...")

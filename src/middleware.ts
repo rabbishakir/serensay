@@ -24,7 +24,7 @@ async function isLoggedIn(request: NextRequest) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith("/api/")) {
+  if (pathname.startsWith("/api/") || pathname.startsWith("/uploads/")) {
     return NextResponse.next()
   }
 
@@ -45,5 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo.png).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo.png|uploads/).*)"],
 }

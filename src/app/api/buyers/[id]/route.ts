@@ -9,6 +9,11 @@ type Params = {
   params: { id: string }
 }
 
+type PrismaTransactionClient = Omit<
+  typeof prisma,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
+
 const BuyerUpdateSchema = BuyerSchema.partial()
 
 export async function GET(_req: Request, { params }: Params) {
@@ -109,7 +114,7 @@ export async function DELETE(_req: Request, { params }: Params) {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       const buyer = await tx.buyer.findUnique({
         where: { id: params.id },
         select: { id: true },

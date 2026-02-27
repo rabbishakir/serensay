@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import type { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { getSession } from "@/lib/session"
 
@@ -16,6 +15,10 @@ const ShipmentStockItemSchema = z.object({
 })
 
 type ShipmentStockItem = z.infer<typeof ShipmentStockItemSchema>
+type PrismaTransactionClient = Omit<
+  typeof prisma,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
 
 function parseStockItems(raw: unknown): ShipmentStockItem[] {
   if (!Array.isArray(raw)) return []
@@ -31,7 +34,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       const shipment = await tx.shipment.findUnique({
         where: { id: params.id },
         select: {
@@ -119,7 +122,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
         data: {
           status: "ARRIVED",
           arrivalDate: new Date(),
-          stockItems: [] as Prisma.InputJsonValue,
+          stockItems: [],
         },
       })
 

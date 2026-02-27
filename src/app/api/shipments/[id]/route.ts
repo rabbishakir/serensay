@@ -12,6 +12,11 @@ const ShipmentUpdateSchema = z.object({
   notes: z.string().optional(),
 })
 
+type PrismaTransactionClient = Omit<
+  typeof prisma,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
+
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getSession(_req)
   if (!session.isLoggedIn) {
@@ -122,7 +127,7 @@ export async function DELETE(
       return Response.json({ error: "Not found" }, { status: 404 })
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: PrismaTransactionClient) => {
       if (shipment.status === "IN_TRANSIT") {
         await tx.order.updateMany({
           where: { batchId: id },

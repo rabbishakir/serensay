@@ -1,6 +1,9 @@
 import { PrismaClient, Source } from "@prisma/client"
 
-type PrismaTransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0]
+type PrismaTransactionClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>
 
 type InventoryOrderInput = {
   productName: string
