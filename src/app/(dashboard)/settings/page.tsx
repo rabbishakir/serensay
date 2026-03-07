@@ -1,25 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 type SettingMeta = {
   key: string
   value: string
   updatedAt: string
-}
-
-type TierRow = {
-  min: string
-  max: string
-  cost: string
-  label: string
 }
 
 const DEFAULT_INVENTORY_TAGS = ["Stocked", "Order Arrived", "Hold", "Gift", "Damaged"]
@@ -40,7 +32,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [exchangeRate, setExchangeRate] = useState("110")
   const [defaultMargin, setDefaultMargin] = useState("25")
-  const [tierRows, setTierRows] = useState<TierRow[]>([])
+  const [bdShippingRate, setBdShippingRate] = useState("2.90")
   const [inventoryTags, setInventoryTags] = useState<string[]>(DEFAULT_INVENTORY_TAGS)
   const [tagDraft, setTagDraft] = useState("")
   const [orderTags, setOrderTags] = useState<string[]>(DEFAULT_ORDER_TAGS)
@@ -62,30 +54,7 @@ export default function SettingsPage() {
         const settings = (await settingsRes.json()) as Record<string, string>
         setExchangeRate(settings.exchange_rate ?? "110")
         setDefaultMargin(settings.default_margin ?? "25")
-
-        const tiersRaw = settings.shipping_tiers
-        if (tiersRaw) {
-          try {
-            const parsed = JSON.parse(tiersRaw) as Array<{
-              min?: number
-              max?: number
-              cost?: number
-              label?: string
-            }>
-            setTierRows(
-              parsed.map((tier) => ({
-                min: String(tier.min ?? ""),
-                max: String(tier.max ?? ""),
-                cost: String(tier.cost ?? ""),
-                label: String(tier.label ?? ""),
-              }))
-            )
-          } catch {
-            setTierRows([])
-          }
-        } else {
-          setTierRows([])
-        }
+        setBdShippingRate(settings.bd_shipping_rate ?? "2.90")
       }
 
       if (metaRes.ok) {
@@ -207,17 +176,6 @@ export default function SettingsPage() {
     }
   }
 
-  const serializedTiers = useMemo(() => {
-    return JSON.stringify(
-      tierRows.map((row) => ({
-        min: Number(row.min || 0),
-        max: Number(row.max || 0),
-        cost: Number(row.cost || 0),
-        label: row.label || undefined,
-      }))
-    )
-  }, [tierRows])
-
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight text-[#1E1215]">Settings</h1>
@@ -276,101 +234,28 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Shipping Cost Tiers</CardTitle>
+          <CardTitle>BD Shipping Rate</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Min (g)</TableHead>
-                  <TableHead>Max (g)</TableHead>
-                  <TableHead>Cost (BDT)</TableHead>
-                  <TableHead>Label</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tierRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-16 text-center text-[#8B6F74]">
-                      No tiers yet.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  tierRows.map((row, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={row.min}
-                          onChange={(e) =>
-                            setTierRows((prev) =>
-                              prev.map((r, i) => (i === idx ? { ...r, min: e.target.value } : r))
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={row.max}
-                          onChange={(e) =>
-                            setTierRows((prev) =>
-                              prev.map((r, i) => (i === idx ? { ...r, max: e.target.value } : r))
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          value={row.cost}
-                          onChange={(e) =>
-                            setTierRows((prev) =>
-                              prev.map((r, i) => (i === idx ? { ...r, cost: e.target.value } : r))
-                            )
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={row.label}
-                          onChange={(e) =>
-                            setTierRows((prev) =>
-                              prev.map((r, i) => (i === idx ? { ...r, label: e.target.value } : r))
-                            )
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                setTierRows((prev) => [...prev, { min: "", max: "", cost: "", label: "" }])
-              }
-            >
-              Add Tier
-            </Button>
-            <Button
-              onClick={() =>
-                void saveSetting("shipping_tiers", serializedTiers, "Shipping tiers saved")
-              }
-              disabled={savingKey === "shipping_tiers"}
-            >
-              {savingKey === "shipping_tiers" ? "Saving..." : "Save Tiers"}
-            </Button>
-          </div>
-
+        <CardContent className="space-y-3">
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={bdShippingRate}
+            onChange={(e) => setBdShippingRate(e.target.value)}
+            disabled={loading}
+          />
           <p className="text-sm text-[#8B6F74]">
-            Last updated: {formatDate(metaMap.shipping_tiers?.updatedAt)}
+            Last updated: {formatDate(metaMap.bd_shipping_rate?.updatedAt)}
           </p>
+          <Button
+            onClick={() =>
+              void saveSetting("bd_shipping_rate", bdShippingRate || "2.90", "BD shipping rate saved")
+            }
+            disabled={savingKey === "bd_shipping_rate"}
+          >
+            {savingKey === "bd_shipping_rate" ? "Saving..." : "Save Rate"}
+          </Button>
         </CardContent>
       </Card>
 
