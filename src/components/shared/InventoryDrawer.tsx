@@ -457,11 +457,11 @@ export default function InventoryDrawer({
   }
 
   const drawerBody = (
-    <>
+    <div className="flex h-full flex-col overflow-hidden">
       <SheetHeader>
         <SheetTitle>{title}</SheetTitle>
       </SheetHeader>
-      <form onSubmit={submit} className="mt-6 space-y-4">
+      <form onSubmit={submit} className="mt-6 flex-1 space-y-4 overflow-y-auto pr-1">
         {mode === "add" ? (
           <div className="mb-4 border-b border-[#EDE0E2] pb-4">
             <div className="rounded-xl border border-[#EDE0E2] bg-[#F7F3F4] p-4">
@@ -808,14 +808,14 @@ export default function InventoryDrawer({
           ) : null}
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 
   if (trigger) {
     return (
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetTrigger asChild>{trigger}</SheetTrigger>
-        <SheetContent side="right" className="w-[420px] sm:max-w-[420px]">
+        <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[420px] sm:max-w-[420px]">
           {drawerBody}
         </SheetContent>
       </Sheet>
@@ -824,7 +824,7 @@ export default function InventoryDrawer({
 
   return (
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-      <SheetContent side="right" className="w-[420px] sm:max-w-[420px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[420px] sm:max-w-[420px]">
         {drawerBody}
       </SheetContent>
     </Sheet>

@@ -550,13 +550,13 @@ export default function OrderDrawer({
   }
 
   const drawerBody = (
-    <>
+    <div className="flex h-full flex-col overflow-hidden">
       <SheetHeader>
         <SheetTitle>{title}</SheetTitle>
         <SheetDescription>Create or update order details.</SheetDescription>
       </SheetHeader>
 
-      <form onSubmit={submit} className="mt-6 space-y-4">
+      <form onSubmit={submit} className="mt-6 flex-1 space-y-4 overflow-y-auto pr-1">
         <div className="relative">
           <Input
             value={form.buyerNameInput}
@@ -863,14 +863,14 @@ export default function OrderDrawer({
           </Button>
         </SheetFooter>
       </form>
-    </>
+    </div>
   )
 
   if (trigger) {
     return (
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetTrigger asChild>{trigger}</SheetTrigger>
-        <SheetContent side="right" className="w-[480px] sm:max-w-[480px]">
+        <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[480px] sm:max-w-[480px]">
           {drawerBody}
         </SheetContent>
       </Sheet>
@@ -879,7 +879,7 @@ export default function OrderDrawer({
 
   return (
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-      <SheetContent side="right" className="w-[480px] sm:max-w-[480px]">
+      <SheetContent side="right" className="w-full max-w-full overflow-y-auto sm:w-[480px] sm:max-w-[480px]">
         {drawerBody}
       </SheetContent>
     </Sheet>
